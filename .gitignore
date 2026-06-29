@@ -23,3 +23,6 @@ coverage
 
 # 生データ（e-Stat シェープファイル等）。生成物 src/data/districtsGeo.ts のみ追跡する
 data_raw/
+
+# subagent-driven-development の進捗台帳（スクラッチ）
+.superpowers/
