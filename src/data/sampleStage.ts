@@ -14,7 +14,7 @@ export const sampleStage: StageDef = {
   id: 'yamaguchi-city',
   name: '山口市',
   initialBudget: 1_000_000, // 100万円
-  maxTurns: 14,
+  maxTurns: 16, // 初夏(6月)〜初秋(9月)の4か月＝16週
   districts: [
     {
       id: 'ato',
