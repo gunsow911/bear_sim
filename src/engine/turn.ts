@@ -83,6 +83,8 @@ export interface EncounterEvent {
   districtId: DistrictId
   kind: EncounterEventKind
   message: string
+  /** この出没で加算された不満度（電気柵で防いだ場合は 0）。 */
+  dissatisfactionDelta: number
 }
 
 export interface EncounterResult {
@@ -155,6 +157,7 @@ export function resolveEncounterPhase(
           districtId: def.id,
           kind: 'fence-block',
           message: `${def.name}：電気柵が里山の遭遇を防いだ`,
+          dissatisfactionDelta: 0,
         })
       } else {
         dissatisfaction += model.params.damage.satoyama
@@ -162,6 +165,7 @@ export function resolveEncounterPhase(
           districtId: def.id,
           kind: 'satoyama',
           message: `${def.name}：里山でクマ出没（不満度+${model.params.damage.satoyama}）`,
+          dissatisfactionDelta: model.params.damage.satoyama,
         })
       }
     }
@@ -173,6 +177,7 @@ export function resolveEncounterPhase(
         districtId: def.id,
         kind: 'urban',
         message: `${def.name}：市街地でクマ出没（不満度+${model.params.damage.urban}）`,
+        dissatisfactionDelta: model.params.damage.urban,
       })
     }
 

@@ -315,9 +315,9 @@ function Dashboard() {
   return (
     <div className="flex h-full flex-col">
       <Hud />
-      <EncounterReveal />
       <main className="relative min-h-0 flex-1">
         <AgendaCards />
+        <EncounterReveal />
         <MapView />
       </main>
       <DistrictDetail />

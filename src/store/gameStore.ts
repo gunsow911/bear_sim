@@ -106,6 +106,8 @@ interface GameStore {
   selectedDistrictId: DistrictId | null
   /** 直近の遭遇フェーズで発生したイベント（UI 表示用）。 */
   lastEvents: EncounterEvent[]
+  /** 直近の遭遇フェーズ開始時点（解決前）の不満度。結果カードの「20→60」表示用。 */
+  dissatisfactionBefore: number
   /** 今週発生した突発イベント。null = 発生なし or 確認済み。 */
   currentEvent: RandomEvent | null
   /** 今週選べるアジェンダ3枚。 */
@@ -150,6 +152,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   game: null,
   selectedDistrictId: null,
   lastEvents: [],
+  dissatisfactionBefore: 0,
   currentEvent: null,
   agendaChoices: [],
   selectedAgendaId: null,
@@ -200,6 +203,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           return {
             game: { ...resolved, phase: over ? 'gameover' : 'encounter' },
             lastEvents: events,
+            dissatisfactionBefore: game.dissatisfaction,
             messages: over ? GAMEOVER_MESSAGES : [],
             messageIndex: 0,
           }
@@ -239,6 +243,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       game: null,
       selectedDistrictId: null,
       lastEvents: [],
+      dissatisfactionBefore: 0,
       currentEvent: null,
       agendaChoices: [],
       selectedAgendaId: null,
