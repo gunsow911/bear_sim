@@ -15,6 +15,13 @@ import {
 } from '@/engine/turn'
 import { pickAgendas, rollEvent, applyAgenda, applyEvent } from '@/engine/agenda'
 import { applySeasonalActiveness, seasonalActiveness } from '@/engine/season'
+import {
+  GAMEOVER_MESSAGES,
+  OPENING_MESSAGES,
+  VICTORY_MESSAGES,
+  seasonalMessageForTurn,
+} from '@/data/messages'
+import type { GameMessage } from '@/types'
 import type {
   ActionKind,
   Agenda,
@@ -126,6 +133,16 @@ interface GameStore {
   selectAgenda: (id: string) => void
   /** 仮選択中のアジェンダを確定し、対策フェーズへ移行する。 */
   confirmAgenda: () => void
+  /** 表示中のメッセージ群（複数ページ）。空なら非表示。 */
+  messages: GameMessage[]
+  /** 現在表示しているページ番号（0始まり）。 */
+  messageIndex: number
+  /** メッセージ群を先頭ページから表示する。 */
+  showMessages: (msgs: GameMessage[]) => void
+  /** 次のページへ。最終ページなら閉じる。 */
+  nextMessage: () => void
+  /** 前のページへ戻る。 */
+  prevMessage: () => void
 }
 
 export const useGameStore = create<GameStore>((set, get) => ({
@@ -137,6 +154,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   agendaChoices: [],
   selectedAgendaId: null,
   tentativeAgendaId: null,
+  messages: [],
+  messageIndex: 0,
 
   startStage: (stage) => {
     const base = createInitialGameState(stage)
@@ -145,6 +164,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       selectedDistrictId: stage.districts[0]?.id ?? null,
       lastEvents: [],
       ...beginTurn(base),
+      messages: OPENING_MESSAGES, // 第1週の指示前に開幕メッセージを表示
+      messageIndex: 0,
     })
   },
 
@@ -175,22 +196,35 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
         case 'action': {
           const { game: resolved, events } = resolveEncounterPhase(game, stage, activeRiskModel)
-          const phase = resolved.dissatisfaction >= 100 ? 'gameover' : 'encounter'
-          return { game: { ...resolved, phase }, lastEvents: events }
+          const over = resolved.dissatisfaction >= 100
+          return {
+            game: { ...resolved, phase: over ? 'gameover' : 'encounter' },
+            lastEvents: events,
+            messages: over ? GAMEOVER_MESSAGES : [],
+            messageIndex: 0,
+          }
         }
 
         case 'encounter': {
           const nextTurn = game.turn + 1
           if (nextTurn > game.maxTurns) {
-            return { game: { ...game, phase: 'victory' } }
+            return {
+              game: { ...game, phase: 'victory' },
+              messages: VICTORY_MESSAGES,
+              messageIndex: 0,
+            }
           }
+          const begun = beginTurn({
+            ...game,
+            turn: nextTurn,
+            instructionPoints: INSTRUCTION_POINTS_PER_TURN,
+          })
+          const seasonal = seasonalMessageForTurn(nextTurn)
           return {
             lastEvents: [],
-            ...beginTurn({
-              ...game,
-              turn: nextTurn,
-              instructionPoints: INSTRUCTION_POINTS_PER_TURN,
-            }),
+            ...begun,
+            messages: seasonal ? [seasonal] : [],
+            messageIndex: 0,
           }
         }
 
@@ -209,7 +243,20 @@ export const useGameStore = create<GameStore>((set, get) => ({
       agendaChoices: [],
       selectedAgendaId: null,
       tentativeAgendaId: null,
+      messages: [],
+      messageIndex: 0,
     }),
+
+  showMessages: (msgs) => set({ messages: msgs, messageIndex: 0 }),
+
+  nextMessage: () =>
+    set((state) =>
+      state.messageIndex < state.messages.length - 1
+        ? { messageIndex: state.messageIndex + 1 }
+        : { messages: [], messageIndex: 0 },
+    ),
+
+  prevMessage: () => set((state) => ({ messageIndex: Math.max(0, state.messageIndex - 1) })),
 
   dismissEvent: () => set({ currentEvent: null }),
 

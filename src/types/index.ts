@@ -151,6 +151,16 @@ export interface Agenda {
   apply: (game: GameState) => GameState
 }
 
+/** 汎用メッセージウインドウ用の1ページ分のメッセージ（状況説明・ヒント等）。 */
+export interface GameMessage {
+  id: string
+  /** 見出し前に置く絵文字など（任意）。 */
+  icon?: string
+  title: string
+  /** 本文。改行(\n)はそのまま表示される。 */
+  body: string
+}
+
 /** §5.2 対策コマンドの種別。 */
 export type ActionKind =
   | 'mowing' // 広域草刈り（予算0・数ターン流入遮断）

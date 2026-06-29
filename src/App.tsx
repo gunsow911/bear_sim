@@ -10,6 +10,7 @@ import { useEffect } from 'react'
 import { AgendaCards } from '@/components/AgendaCards'
 import { EncounterReveal } from '@/components/EncounterReveal'
 import { EventModal } from '@/components/EventModal'
+import { MessageModal } from '@/components/MessageModal'
 import { MapView } from '@/components/MapView'
 import { ACTION_LIST } from '@/data/actions'
 import { sampleStage } from '@/data/sampleStage'
@@ -333,6 +334,7 @@ export default function App() {
     <div className="h-full">
       {game ? <Dashboard /> : <StartScreen />}
       <EventModal />
+      <MessageModal />
     </div>
   )
 }
