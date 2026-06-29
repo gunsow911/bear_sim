@@ -7,25 +7,28 @@
  */
 
 import { useEffect } from 'react'
+import { AgendaCards } from '@/components/AgendaCards'
+import { EncounterReveal } from '@/components/EncounterReveal'
+import { EventModal } from '@/components/EventModal'
 import { MapView } from '@/components/MapView'
 import { ACTION_LIST } from '@/data/actions'
 import { sampleStage } from '@/data/sampleStage'
 import { useGameStore } from '@/store/gameStore'
 import { applyTheme, DEFAULT_THEME } from '@/theme/themes'
-import type { DistrictFeature, GamePhase } from '@/types'
-
-const PHASE_LABEL: Record<GamePhase, string> = {
-  agenda: '議題フェーズ',
-  action: '対策フェーズ',
-  encounter: '遭遇フェーズ',
-  gameover: 'ゲームオーバー',
-  victory: '防衛成功',
-}
+import type { DistrictFeature } from '@/types'
 
 const FEATURE_LABEL: Record<DistrictFeature, { icon: string; name: string }> = {
   water: { icon: '🌊', name: '水系接続' },
   'green-corridor': { icon: '🌲', name: 'グリーン回廊' },
   'trunk-road': { icon: '🚧', name: '幹線道路' },
+}
+
+/** ゲーム開始月（盛夏）。ターンを「N月M週」表記に変換する起点。8月→11月の4か月。 */
+const START_MONTH = 8
+function seasonLabel(turn: number): string {
+  const month = START_MONTH + Math.floor((turn - 1) / 4)
+  const week = ((turn - 1) % 4) + 1
+  return `${month}月${week}週`
 }
 
 function StartScreen() {
@@ -53,7 +56,8 @@ function Hud() {
     <header className="flex items-center justify-between gap-4 border-b border-panel-border bg-panel-light px-4 py-2">
       <div className="flex gap-6 text-sm">
         <span>
-          ターン <b>{game.turn}</b> / {game.maxTurns}
+          <b>{seasonLabel(game.turn)}</b>
+          <span className="ml-2 text-slate-400">あと{game.maxTurns - game.turn + 1}週</span>
         </span>
         <span>
           予算 <b>{game.budget.toLocaleString()}</b> 円
@@ -71,16 +75,13 @@ function Hud() {
         </span>
       </div>
       <div className="flex items-center gap-3">
-        <span className="rounded bg-panel px-3 py-1 text-sm font-bold">
-          {PHASE_LABEL[game.phase]}
-        </span>
         <PhaseControl />
       </div>
     </header>
   )
 }
 
-/** フェーズ送り／リスタートのボタン（画面右上）。 */
+/** フェーズ送り／リスタートのボタン（画面右上）。文脈に応じたラベルを表示。 */
 function PhaseControl() {
   const game = useGameStore((s) => s.game)
   const advancePhase = useGameStore((s) => s.advancePhase)
@@ -97,52 +98,27 @@ function PhaseControl() {
       </button>
     )
   }
-  return (
-    <button
-      className="rounded-lg bg-risk-warn px-5 py-1.5 font-bold text-panel transition hover:brightness-110"
-      onClick={advancePhase}
-    >
-      次のフェーズへ →
-    </button>
-  )
-}
-
-function DistrictList() {
-  const stage = useGameStore((s) => s.stage)
-  const game = useGameStore((s) => s.game)
-  const selectedId = useGameStore((s) => s.selectedDistrictId)
-  const selectDistrict = useGameStore((s) => s.selectDistrict)
-  if (!stage || !game) return null
-
-  return (
-    <ul className="flex flex-col gap-2 overflow-y-auto p-3">
-      {stage.districts.map((d) => {
-        const ds = game.districts[d.id]
-        const selected = d.id === selectedId
-        return (
-          <li key={d.id}>
-            <button
-              className={`w-full rounded-lg border px-3 py-2 text-left transition ${
-                selected
-                  ? 'border-risk-safe bg-panel-light'
-                  : 'border-panel-border bg-panel hover:bg-panel-light'
-              }`}
-              onClick={() => selectDistrict(d.id)}
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-bold">{d.name}</span>
-                {d.mountainAdjacent && <span title="山林隣接">⛰️</span>}
-              </div>
-              <div className="mt-1 text-xs text-slate-400">
-                里山 {ds.satoyamaEncounterRate.toFixed(0)} / 市街{' '}
-                {ds.urbanEncounterRate.toFixed(0)}
-              </div>
-            </button>
-          </li>
-        )
-      })}
-    </ul>
-  )
+  if (game.phase === 'action') {
+    return (
+      <button
+        className="rounded-lg bg-risk-warn px-5 py-1.5 font-bold text-panel transition hover:brightness-110"
+        onClick={advancePhase}
+      >
+        クマの行動へ →
+      </button>
+    )
+  }
+  if (game.phase === 'encounter') {
+    return (
+      <button
+        className="rounded-lg bg-risk-warn px-5 py-1.5 font-bold text-panel transition hover:brightness-110"
+        onClick={advancePhase}
+      >
+        次の週へ →
+      </button>
+    )
+  }
+  return <span></span>
 }
 
 /** 遭遇率に応じた警戒色クラスを返す。 */
@@ -189,7 +165,13 @@ function DistrictDetail() {
   const stage = useGameStore((s) => s.stage)
   const game = useGameStore((s) => s.game)
   const selectedId = useGameStore((s) => s.selectedDistrictId)
+  const selectDistrict = useGameStore((s) => s.selectDistrict)
   if (!stage || !game) return null
+
+  const districts = stage.districts
+  const idx = districts.findIndex((d) => d.id === selectedId)
+  const prevId = idx >= 0 ? districts[(idx - 1 + districts.length) % districts.length].id : null
+  const nextId = idx >= 0 ? districts[(idx + 1) % districts.length].id : null
 
   const def = stage.districts.find((d) => d.id === selectedId)
   const ds = selectedId ? game.districts[selectedId] : undefined
@@ -204,13 +186,34 @@ function DistrictDetail() {
           {/* 見出し + 特徴ラベル */}
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-lg font-bold">{def.name}</h2>
-              {def.mountainAdjacent && (
+              <button
+                aria-label="前の地区"
+                onClick={() => prevId && selectDistrict(prevId)}
+                className="shrink-0 rounded border border-panel-border bg-panel px-2 py-0.5 text-sm transition hover:bg-panel-light"
+              >
+                ‹
+              </button>
+              <h2
+                className="min-w-0 flex-1 truncate text-center text-lg font-bold"
+                title={def.name}
+              >
+                {def.name}
+              </h2>
+              <button
+                aria-label="次の地区"
+                onClick={() => nextId && selectDistrict(nextId)}
+                className="shrink-0 rounded border border-panel-border bg-panel px-2 py-0.5 text-sm transition hover:bg-panel-light"
+              >
+                ›
+              </button>
+            </div>
+            {def.mountainAdjacent && (
+              <div className="mt-1">
                 <span className="rounded bg-panel px-2 py-0.5 text-xs" title="山林隣接">
                   ⛰️ 山林隣接
                 </span>
-              )}
-            </div>
+              </div>
+            )}
             <div className="mt-2 flex flex-wrap gap-1">
               {def.features.length === 0 ? (
                 <span className="text-xs text-slate-500">特徴ラベルなし</span>
@@ -306,53 +309,16 @@ function ActionBar() {
   )
 }
 
-/** 直近の遭遇フェーズの結果を表示するバナー。 */
-function EventLog() {
-  const events = useGameStore((s) => s.lastEvents)
-  const phase = useGameStore((s) => s.game?.phase)
-  // 遭遇結果を確認するフェーズでのみ表示
-  if (phase !== 'encounter' && phase !== 'gameover') return null
-
-  return (
-    <div className="border-b border-panel-border bg-panel px-4 py-1.5 text-sm">
-      {events.length === 0 ? (
-        <span className="text-risk-safe">前ターンの遭遇：異常なし 🐾</span>
-      ) : (
-        <span className="flex flex-wrap gap-x-4 gap-y-1">
-          {events.map((e, i) => (
-            <span
-              key={i}
-              className={
-                e.kind === 'urban'
-                  ? 'text-risk-critical'
-                  : e.kind === 'satoyama'
-                    ? 'text-risk-danger'
-                    : 'text-risk-safe'
-              }
-            >
-              {e.message}
-            </span>
-          ))}
-        </span>
-      )}
-    </div>
-  )
-}
 
 function Dashboard() {
   return (
     <div className="flex h-full flex-col">
       <Hud />
-      <EventLog />
-      <div className="flex min-h-0 flex-1">
-        <aside className="flex w-64 flex-col border-r border-panel-border">
-          <h2 className="px-3 pt-3 text-sm font-bold text-slate-400">地区</h2>
-          <DistrictList />
-        </aside>
-        <main className="min-w-0 flex-1">
-          <MapView />
-        </main>
-      </div>
+      <EncounterReveal />
+      <main className="relative min-h-0 flex-1">
+        <AgendaCards />
+        <MapView />
+      </main>
       <DistrictDetail />
     </div>
   )
@@ -363,5 +329,10 @@ export default function App() {
   useEffect(() => {
     applyTheme(DEFAULT_THEME)
   }, [])
-  return <div className="h-full">{game ? <Dashboard /> : <StartScreen />}</div>
+  return (
+    <div className="h-full">
+      {game ? <Dashboard /> : <StartScreen />}
+      <EventModal />
+    </div>
+  )
 }

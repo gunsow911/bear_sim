@@ -6,7 +6,8 @@
  * 実データへの差し替えは docs/DATA.md を参照。
  */
 
-import { GeoJSON, MapContainer, TileLayer } from 'react-leaflet'
+import { GeoJSON, MapContainer, Marker, TileLayer } from 'react-leaflet'
+import L from 'leaflet'
 import type { LatLngBoundsExpression, Layer, PathOptions } from 'leaflet'
 import type { Feature } from 'geojson'
 import 'leaflet/dist/leaflet.css'
@@ -59,6 +60,8 @@ export function MapView() {
   const game = useGameStore((s) => s.game)
   const selectedId = useGameStore((s) => s.selectedDistrictId)
   const selectDistrict = useGameStore((s) => s.selectDistrict)
+  const lastEvents = useGameStore((s) => s.lastEvents)
+  const phase = useGameStore((s) => s.game?.phase)
 
   const districts = game?.districts ?? {}
 
@@ -83,6 +86,40 @@ export function MapView() {
     }
   }
 
+  // 出没（里山/市街）があった地区 id の集合
+  const sightedIds = new Set(
+    (phase === 'encounter' || phase === 'gameover'
+      ? lastEvents
+      : []
+    )
+      .filter((e) => e.kind !== 'fence-block')
+      .map((e) => e.districtId),
+  )
+
+  // 地区重心（座標平均）の概算
+  const centroidOf = (districtId: string): [number, number] | null => {
+    const f = districtsGeo.features.find((ff) => ff.properties.districtId === districtId)
+    if (!f) return null
+    let sx = 0, sy = 0, n = 0
+    const walk = (node: unknown): void => {
+      if (!Array.isArray(node)) return
+      if (typeof node[0] === 'number') {
+        sx += node[0] as number; sy += node[1] as number; n++
+        return
+      }
+      for (const c of node) walk(c)
+    }
+    walk(f.geometry.coordinates)
+    return n ? [sy / n, sx / n] : null
+  }
+
+  const bearIcon = L.divIcon({
+    className: '',
+    html: '<div style="font-size:22px;line-height:1">🐻</div>',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12],
+  })
+
   const onEachFeature = (feature: Feature, layer: Layer) => {
     const id = feature.properties?.districtId as string | undefined
     const name = (feature.properties?.name as string) ?? id ?? ''
@@ -99,6 +136,10 @@ export function MapView() {
         url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       <GeoJSON key={styleKey} data={districtsGeo} style={style} onEachFeature={onEachFeature} />
+      {[...sightedIds].map((id) => {
+        const c = centroidOf(id)
+        return c ? <Marker key={id} position={c} icon={bearIcon} /> : null
+      })}
     </MapContainer>
   )
 }
