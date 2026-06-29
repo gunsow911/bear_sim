@@ -1,6 +1,7 @@
 /**
  * §5.2 対策コマンドの定義。コスト等は仕様の例に基づく暫定値。
  * 効果量（遭遇率への影響度）は RiskModel.params.actionEffects 側で管理する。
+ * flavor / effectLabel / duration は表示専用（マスキング維持のため数値は出さない）。
  */
 
 import type { ActionDef, ActionKind } from '@/types'
@@ -11,21 +12,31 @@ export const ACTIONS: Record<ActionKind, ActionDef> = {
     name: '広域草刈り',
     budgetCost: 0, // 万円
     instructionPointCost: 1,
-    description: '集落と山林の境界を刈り払い、見通しを良くする（緩衝帯整備）。数ターン流入を遮断する。',
+    flavor:
+      '集落と山林の境界を一斉に刈り払い、見通しを確保。やぶに隠れて里へ下りる"けものみち"をしばらく断ちます。',
+    effectLabel: 'この地区への流入をしばらくせき止める',
+    duration: '約3週間',
   },
   'clean-up': {
     kind: 'clean-up',
     name: 'クリーン作戦',
     budgetCost: 10, // 万円
     instructionPointCost: 1,
-    description: '放置果樹や生ゴミ（誘引物）を一掃し、遭遇率を永続的に下げる。',
+    flavor:
+      '放置果樹や生ゴミ（誘引物）を地域ぐるみで一掃。里へ下りてくる動機そのものを恒久的にそぎます。',
+    effectLabel: 'この地区の出没しやすさを永続的に下げる',
+    duration: '永続',
+    realTerms: ['誘引物'],
   },
   'electric-fence': {
     kind: 'electric-fence',
     name: '電気柵の設置',
     budgetCost: 30, // 万円
     instructionPointCost: 1,
-    description: '農地に侵入防止柵を張り、その地区の里山の遭遇を1度だけ無効化する。',
+    flavor:
+      '農地のまわりに侵入防止柵を張りめぐらせます。次に里山から下りてくる出没を、一度だけ確実に食い止めます。',
+    effectLabel: 'この地区の里山の出没を1回だけ防ぐ',
+    duration: '次の出没を1回',
   },
 }
 
