@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * カラーテーマ（単一の真実源）。
+ * 各色は「R G B」のチャンネル値で持つ（Tailwind の <alpha-value> 透過に対応）。
+ * テーマ切替は <html data-theme="..."> を差し替えるだけ。
+ * トークンの一覧と適用は src/theme/themes.ts を参照。
+ */
+@layer base {
+  /* command = 標準テーマ（data-theme 未指定時のフォールバックも兼ねる） */
+  :root {
+    --color-panel: 15 23 42;
+    --color-panel-light: 30 41 59;
+    --color-panel-border: 51 65 85;
+    --color-fg: 226 232 240;
+    --color-risk-safe: 34 197 94;
+    --color-risk-warn: 234 179 8;
+    --color-risk-danger: 249 115 22;
+    --color-risk-critical: 239 68 68;
+  }
+
+  /* ocean = 深い青 + ティール／シアン系 */
+  :root[data-theme='ocean'] {
+    --color-panel: 8 17 34;
+    --color-panel-light: 17 31 56;
+    --color-panel-border: 30 54 92;
+    --color-fg: 224 235 247;
+    --color-risk-safe: 45 212 191;
+    --color-risk-warn: 250 204 21;
+    --color-risk-danger: 251 146 60;
+    --color-risk-critical: 251 113 133;
+  }
+
+  /* amber = 暖色系（土・琥珀） */
+  :root[data-theme='amber'] {
+    --color-panel: 28 22 16;
+    --color-panel-light: 41 33 24;
+    --color-panel-border: 68 56 42;
+    --color-fg: 245 235 220;
+    --color-risk-safe: 132 204 22;
+    --color-risk-warn: 234 179 8;
+    --color-risk-danger: 234 88 12;
+    --color-risk-critical: 220 38 38;
+  }
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  @apply bg-panel text-fg;
+}
+
+/* Leaflet コンテナはタイルの z-index がパネルより前に出ないよう抑える */
+.leaflet-container {
+  background: rgb(var(--color-panel));
+  z-index: 0;
+}
