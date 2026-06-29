@@ -6,17 +6,19 @@
  * 各パネルの本実装（メーター演出・議題カード・対策コマンド）は Step 5 で行う。
  */
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { ActionDetailCard } from '@/components/ActionDetailCard'
 import { AgendaCards } from '@/components/AgendaCards'
 import { EncounterReveal } from '@/components/EncounterReveal'
 import { EventModal } from '@/components/EventModal'
 import { MessageModal } from '@/components/MessageModal'
+import { ActionConfirmModal } from '@/components/ActionConfirmModal'
 import { MapView } from '@/components/MapView'
-import { ACTION_LIST } from '@/data/actions'
+import { ACTION_LIST, ACTIONS } from '@/data/actions'
 import { sampleStage } from '@/data/sampleStage'
 import { useGameStore } from '@/store/gameStore'
 import { applyTheme, DEFAULT_THEME } from '@/theme/themes'
-import type { DistrictFeature } from '@/types'
+import type { ActionKind, DistrictFeature } from '@/types'
 
 const FEATURE_LABEL: Record<DistrictFeature, { icon: string; name: string }> = {
   water: { icon: '🌊', name: '水系接続' },
@@ -52,7 +54,11 @@ function StartScreen() {
 
 function Hud() {
   const game = useGameStore((s) => s.game)
+  const reservedBudget = useGameStore((s) => s.reservedBudget)
+  const reservedPoints = useGameStore((s) => s.reservedPoints)
   if (!game) return null
+  const resB = reservedBudget()
+  const resP = reservedPoints()
   return (
     <header className="flex items-center justify-between gap-4 border-b border-panel-border bg-panel-light px-4 py-2">
       <div className="flex gap-6 text-sm">
@@ -62,9 +68,11 @@ function Hud() {
         </span>
         <span>
           予算 <b>{game.budget.toLocaleString()}</b> 万円
+          {resB > 0 && <span className="ml-1 text-risk-warn">(−{resB})</span>}
         </span>
         <span>
           指示P <b>{game.instructionPoints}</b>
+          {resP > 0 && <span className="ml-1 text-risk-warn">(−{resP})</span>}
         </span>
         <span>
           不満度 <b className={game.dissatisfaction >= 70 ? 'text-risk-critical' : ''}>
@@ -86,6 +94,7 @@ function Hud() {
 function PhaseControl() {
   const game = useGameStore((s) => s.game)
   const advancePhase = useGameStore((s) => s.advancePhase)
+  const openActionModal = useGameStore((s) => s.openActionModal)
   const reset = useGameStore((s) => s.reset)
   if (!game) return null
 
@@ -103,7 +112,7 @@ function PhaseControl() {
     return (
       <button
         className="rounded-lg bg-risk-warn px-5 py-1.5 font-bold text-panel transition hover:brightness-110"
-        onClick={advancePhase}
+        onClick={openActionModal}
       >
         クマの行動へ →
       </button>
@@ -167,6 +176,8 @@ function DistrictDetail() {
   const game = useGameStore((s) => s.game)
   const selectedId = useGameStore((s) => s.selectedDistrictId)
   const selectDistrict = useGameStore((s) => s.selectDistrict)
+  const pending = useGameStore((s) => s.pendingActions)
+  const removeAction = useGameStore((s) => s.removeAction)
   if (!stage || !game) return null
 
   const districts = stage.districts
@@ -180,6 +191,29 @@ function DistrictDetail() {
 
   return (
     <section className="flex flex-col gap-3 border-t border-panel-border bg-panel-light px-4 py-3">
+      {game.phase === 'action' && pending.length > 0 && (
+        <div className="flex items-center gap-2 overflow-x-auto border-b border-panel-border pb-2">
+          <span className="shrink-0 text-xs text-slate-400">今週の施策</span>
+          {pending.map((p) => {
+            const dName = stage.districts.find((d) => d.id === p.districtId)?.name ?? p.districtId
+            return (
+              <span
+                key={`${p.districtId}-${p.kind}`}
+                className="flex shrink-0 items-center gap-1 rounded-full border border-risk-safe bg-panel px-2 py-0.5 text-xs"
+              >
+                {dName}：{ACTIONS[p.kind].name}
+                <button
+                  aria-label="予約を解除"
+                  onClick={() => removeAction(p.districtId, p.kind)}
+                  className="ml-1 text-slate-400 hover:text-risk-critical"
+                >
+                  ×
+                </button>
+              </span>
+            )
+          })}
+        </div>
+      )}
       {!def || !ds ? (
         <p className="text-sm text-slate-400">地区を選択すると詳細が表示されます。</p>
       ) : (
@@ -279,37 +313,73 @@ function DistrictDetail() {
   )
 }
 
-/** §5.2 対策コマンドのバー。選択中の地区に対して実行する（対策フェーズのみ有効）。 */
+/**
+ * §5.2 施策バー。選択中の地区に対し予約／解除をトグルする（対策フェーズのみ有効）。
+ * ボタンは折り返さず横1段のレール（overflow-x-auto）にして、施策が増えてもパネルが縦に伸びない。
+ * レールは縦方向もクリップするため、詳細カードはレールの外（ラッパー直下の絶対配置）に
+ * 1枚だけ置き、ホバー／フォーカス中の施策の内容を上方向に表示する（クリップ回避）。
+ */
 function ActionBar() {
-  const applyAction = useGameStore((s) => s.applyAction)
-  const canApply = useGameStore((s) => s.canApply)
+  const toggleAction = useGameStore((s) => s.toggleAction)
+  const canStage = useGameStore((s) => s.canStage)
+  const isStaged = useGameStore((s) => s.isStaged)
+  const selectedId = useGameStore((s) => s.selectedDistrictId)
   const game = useGameStore((s) => s.game)
-  if (!game) return null
+  // ホバー／フォーカス中の施策（詳細カード表示用）。
+  const [activeKind, setActiveKind] = useState<ActionKind | null>(null)
+  if (!game || !selectedId) return null
+
+  const activeAction = activeKind ? ACTIONS[activeKind] : null
+  // 別ボタンへ移った時の取りこぼしを防ぐため、現在表示中の施策のときだけ解除する。
+  const clearIf = (kind: ActionKind) => setActiveKind((k) => (k === kind ? null : k))
 
   return (
-    <div className="flex flex-wrap gap-2 border-t border-panel-border pt-3">
-      {ACTION_LIST.map((a) => {
-        const enabled = canApply(a.kind)
-        return (
-          <button
-            key={a.kind}
-            disabled={!enabled}
-            title={a.description}
-            onClick={() => applyAction(a.kind)}
-            className="rounded-lg border border-panel-border bg-panel px-3 py-2 text-left text-sm transition hover:bg-panel-light disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <span className="font-bold">{a.name}</span>
-            <span className="ml-2 text-xs text-slate-400">
-              {a.budgetCost > 0 ? `${a.budgetCost}万円` : '予算0'} / 指示
-              {a.instructionPointCost}
-            </span>
-          </button>
-        )
-      })}
+    <div className="relative border-t border-panel-border pt-3">
+      {/* 横スクロールのレール（1段固定）。ボタンは固定幅で縮まずに横へ流れる。 */}
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {ACTION_LIST.map((a) => {
+          const staged = isStaged(selectedId, a.kind)
+          const enabled = canStage(a.kind)
+          const costLabel =
+            a.budgetCost > 0
+              ? `${a.budgetCost}万円 / 指示P${a.instructionPointCost}`
+              : `予算0 / 指示P${a.instructionPointCost}`
+          return (
+            <button
+              key={a.kind}
+              disabled={!enabled}
+              aria-pressed={staged}
+              onClick={() => toggleAction(a.kind)}
+              onMouseEnter={() => setActiveKind(a.kind)}
+              onMouseLeave={() => clearIf(a.kind)}
+              onFocus={() => setActiveKind(a.kind)}
+              onBlur={() => clearIf(a.kind)}
+              className={`flex w-44 shrink-0 flex-col rounded-lg border px-3 py-2 text-left text-sm transition disabled:cursor-not-allowed disabled:opacity-40 ${
+                staged
+                  ? 'border-risk-safe bg-panel-light ring-2 ring-risk-safe'
+                  : 'border-panel-border bg-panel hover:bg-panel-light'
+              }`}
+            >
+              <span className="font-bold">
+                {staged ? '✓ ' : ''}
+                {a.name}
+              </span>
+              <span className="text-xs text-risk-safe">{a.effectLabel}</span>
+              <span className="text-xs text-slate-400">{costLabel}</span>
+            </button>
+          )
+        })}
+      </div>
+      {/* 詳細カード：レールの外・絶対配置で上方向に開く（横スクロールにクリップされない）。
+          タッチ端末（hover 不可）はボタンの常時表示（効果ラベル＋コスト）でカバー。 */}
+      {activeAction && (
+        <div className="pointer-events-none absolute bottom-full left-0 z-[600] mb-2">
+          <ActionDetailCard action={activeAction} />
+        </div>
+      )}
     </div>
   )
 }
-
 
 function Dashboard() {
   return (
@@ -318,6 +388,7 @@ function Dashboard() {
       <main className="relative min-h-0 flex-1">
         <AgendaCards />
         <EncounterReveal />
+        <ActionConfirmModal />
         <MapView />
       </main>
       <DistrictDetail />
