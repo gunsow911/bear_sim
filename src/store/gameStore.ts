@@ -10,7 +10,6 @@ import { activeRiskModel } from '@/engine/model'
 import {
   applyAction as applyActionEngine,
   applySightingDecay,
-  canAfford,
   resolveEncounterPhase,
   type EncounterEvent,
 } from '@/engine/turn'
@@ -22,6 +21,7 @@ import {
   VICTORY_MESSAGES,
   seasonalMessageForTurn,
 } from '@/data/messages'
+import { ACTIONS } from '@/data/actions'
 import type { GameMessage } from '@/types'
 import type {
   ActionKind,
@@ -29,6 +29,7 @@ import type {
   DistrictId,
   DistrictState,
   GameState,
+  PendingAction,
   RandomEvent,
   StageDef,
 } from '@/types'
@@ -75,6 +76,7 @@ function beginTurn(game: GameState): {
   agendaChoices: Agenda[]
   selectedAgendaId: null
   tentativeAgendaId: null
+  pendingActions: PendingAction[]
 } {
   // 第1週は導入として突発イベント・議題を発生させず、すぐ対策フェーズへ。
   if (game.turn === 1) {
@@ -84,6 +86,7 @@ function beginTurn(game: GameState): {
       agendaChoices: [],
       selectedAgendaId: null,
       tentativeAgendaId: null,
+      pendingActions: [],
     }
   }
 
@@ -99,6 +102,7 @@ function beginTurn(game: GameState): {
     agendaChoices: pickAgendas(),
     selectedAgendaId: null,
     tentativeAgendaId: null,
+    pendingActions: [],
   }
 }
 
@@ -122,14 +126,34 @@ interface GameStore {
   /** 仮選択中（決定前）のアジェンダ id。null = 未選択。 */
   tentativeAgendaId: string | null
 
+  /** UI 上で予約中（実行前）の施策一覧。 */
+  pendingActions: PendingAction[]
+  /** 選択中の地区に対し施策を予約／解除する（対策フェーズのみ）。 */
+  toggleAction: (kind: ActionKind) => void
+  /** 指定の予約を解除する。 */
+  removeAction: (districtId: DistrictId, kind: ActionKind) => void
+  /** 指定地区にその施策が予約済みか。 */
+  isStaged: (districtId: DistrictId, kind: ActionKind) => boolean
+  /** 予約合計の予算（万円）。 */
+  reservedBudget: () => number
+  /** 予約合計の指示ポイント。 */
+  reservedPoints: () => number
+  /** その施策を今予約できるか（残リソース・フェーズ）。予約済みなら常に true。 */
+  canStage: (kind: ActionKind) => boolean
+
+  /** 実行確認モーダルの開閉。 */
+  actionModalOpen: boolean
+  /** 確認モーダルを開く（「クマの行動へ」押下時）。 */
+  openActionModal: () => void
+  /** 確認モーダルを閉じる（「戻る」）。 */
+  closeActionModal: () => void
+  /** 予約済みの施策をすべて適用し、遭遇フェーズを解決する。 */
+  commitActions: () => void
+
   /** ステージを選んでゲームを初期化する。 */
   startStage: (stage: StageDef) => void
   /** 地区を選択する。 */
   selectDistrict: (id: DistrictId | null) => void
-  /** 選択中の地区に対策コマンドを実行する（対策フェーズのみ有効）。 */
-  applyAction: (kind: ActionKind) => void
-  /** その対策を今実行できるか（リソース・フェーズ）。 */
-  canApply: (kind: ActionKind) => boolean
   /** 次フェーズへ進む。action→encounter で遭遇を解決する。 */
   advancePhase: () => void
   /** ゲームをリセットする。 */
@@ -162,6 +186,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   agendaChoices: [],
   selectedAgendaId: null,
   tentativeAgendaId: null,
+  pendingActions: [],
+  actionModalOpen: false,
   messages: [],
   messageIndex: 0,
 
@@ -179,17 +205,79 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   selectDistrict: (id) => set({ selectedDistrictId: id }),
 
-  canApply: (kind) => {
-    const { game } = get()
-    if (!game || game.phase !== 'action') return false
-    return canAfford(game, kind)
+  toggleAction: (kind) =>
+    set((state) => {
+      const { game, selectedDistrictId, pendingActions } = state
+      if (!game || game.phase !== 'action' || !selectedDistrictId) return state
+      const exists = pendingActions.some(
+        (p) => p.districtId === selectedDistrictId && p.kind === kind,
+      )
+      if (exists) {
+        return {
+          pendingActions: pendingActions.filter(
+            (p) => !(p.districtId === selectedDistrictId && p.kind === kind),
+          ),
+        }
+      }
+      // canStage は更新前の state（pendingActions 未変更）を見るのが正しい（この施策を足せるかの判定）
+      if (!get().canStage(kind)) return state
+      return { pendingActions: [...pendingActions, { districtId: selectedDistrictId, kind }] }
+    }),
+
+  removeAction: (districtId, kind) =>
+    set((state) => ({
+      pendingActions: state.pendingActions.filter(
+        (p) => !(p.districtId === districtId && p.kind === kind),
+      ),
+    })),
+
+  isStaged: (districtId, kind) =>
+    get().pendingActions.some((p) => p.districtId === districtId && p.kind === kind),
+
+  reservedBudget: () =>
+    get().pendingActions.reduce((sum, p) => sum + ACTIONS[p.kind].budgetCost, 0),
+
+  reservedPoints: () =>
+    get().pendingActions.reduce((sum, p) => sum + ACTIONS[p.kind].instructionPointCost, 0),
+
+  canStage: (kind) => {
+    const { game, selectedDistrictId } = get()
+    if (!game || game.phase !== 'action' || !selectedDistrictId) return false
+    // 既に当該地区へ予約済みなら、OFF にできるよう常に許可
+    if (get().isStaged(selectedDistrictId, kind)) return true
+    const a = ACTIONS[kind]
+    const budgetLeft = game.budget - get().reservedBudget()
+    const pointsLeft = game.instructionPoints - get().reservedPoints()
+    return budgetLeft >= a.budgetCost && pointsLeft >= a.instructionPointCost
   },
 
-  applyAction: (kind) =>
+  openActionModal: () => set({ actionModalOpen: true }),
+
+  closeActionModal: () => set({ actionModalOpen: false }),
+
+  commitActions: () =>
     set((state) => {
-      const { game, selectedDistrictId } = state
-      if (!game || game.phase !== 'action' || !selectedDistrictId) return state
-      return { game: applyActionEngine(game, selectedDistrictId, kind, activeRiskModel) }
+      const { game, stage, pendingActions } = state
+      if (!game || !stage || game.phase !== 'action') return { ...state, actionModalOpen: false }
+
+      // 1) 予約を配列順に適用（予算・指示Pを実消費）
+      let applied = game
+      for (const p of pendingActions) {
+        applied = applyActionEngine(applied, p.districtId, p.kind, activeRiskModel)
+      }
+
+      // 2) 遭遇フェーズの解決
+      const { game: resolved, events } = resolveEncounterPhase(applied, stage, activeRiskModel)
+      const over = resolved.dissatisfaction >= 100
+      return {
+        game: { ...resolved, phase: over ? 'gameover' : 'encounter' },
+        lastEvents: events,
+        dissatisfactionBefore: game.dissatisfaction,
+        messages: over ? GAMEOVER_MESSAGES : [],
+        messageIndex: 0,
+        pendingActions: [],
+        actionModalOpen: false,
+      }
     }),
 
   advancePhase: () =>
@@ -202,17 +290,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           // アジェンダ選択は chooseAgenda で行うため、ここでは進めない
           return state
 
-        case 'action': {
-          const { game: resolved, events } = resolveEncounterPhase(game, stage, activeRiskModel)
-          const over = resolved.dissatisfaction >= 100
-          return {
-            game: { ...resolved, phase: over ? 'gameover' : 'encounter' },
-            lastEvents: events,
-            dissatisfactionBefore: game.dissatisfaction,
-            messages: over ? GAMEOVER_MESSAGES : [],
-            messageIndex: 0,
-          }
-        }
+        // action フェーズの進行は commitActions が担う（advancePhase では進めない）
 
         case 'encounter': {
           const nextTurn = game.turn + 1
@@ -253,6 +331,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       agendaChoices: [],
       selectedAgendaId: null,
       tentativeAgendaId: null,
+      pendingActions: [],
+      actionModalOpen: false,
       messages: [],
       messageIndex: 0,
     }),
