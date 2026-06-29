@@ -179,5 +179,18 @@ export interface ActionDef {
   budgetCost: number
   /** 指示ポイントコスト。 */
   instructionPointCost: number
-  description: string
+  /** ナラティブな状況描写文（議題と同テイスト）。 */
+  flavor: string
+  /** 質的な効果（例「この地区の里山の出没を1回だけ防ぐ」）。数値は出さない。 */
+  effectLabel: string
+  /** 持続（例「次の出没を1回」「永続」「約3週間」）。表示用テキストで数理パラメータと自動連動はしない。 */
+  duration: string
+  /** flavor 内で用語ツールチップ対象となる現実用語（議題の realTerms と同様。任意）。 */
+  realTerms?: string[]
+}
+
+/** UI 上で予約中（実行前）の施策。地区とコマンド種別の組。 */
+export interface PendingAction {
+  districtId: DistrictId
+  kind: ActionKind
 }
