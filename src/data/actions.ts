@@ -11,21 +11,21 @@ export const ACTIONS: Record<ActionKind, ActionDef> = {
     name: '広域草刈り',
     budgetCost: 0,
     instructionPointCost: 1,
-    description: '指定地区の流入を数ターン遮断する（時間稼ぎ）。',
+    description: '集落と山林の境界を刈り払い、見通しを良くする（緩衝帯整備）。数ターン流入を遮断する。',
   },
   'clean-up': {
     kind: 'clean-up',
     name: 'クリーン作戦',
     budgetCost: 100_000,
     instructionPointCost: 1,
-    description: '放置果樹や生ゴミを一掃し、遭遇率を永続的に減少させる（根本解決）。',
+    description: '放置果樹や生ゴミ（誘引物）を一掃し、遭遇率を永続的に下げる。',
   },
   'electric-fence': {
     kind: 'electric-fence',
     name: '電気柵の設置',
     budgetCost: 300_000,
     instructionPointCost: 1,
-    description: '農地に電気柵を張る。その地区の里山の遭遇を1度だけ無効化する。',
+    description: '農地に侵入防止柵を張り、その地区の里山の遭遇を1度だけ無効化する。',
   },
 }
 
