@@ -113,7 +113,7 @@ export interface GameState {
   /** 不満度（蓄積型 HP。100 で敗北）。 */
   dissatisfaction: number
 
-  /** §4.2-① 活発度（全地区共通。季節変動やイベントで上昇）。 */
+  /** 活発度（全地区共通。季節変動やイベントで上昇）。 */
   activeness: number
 
   /** 地区 ID → 可変状態。 */
@@ -124,20 +124,31 @@ export interface GameState {
 // §5 フェーズで扱うイベント / 議題 / 対策コマンド
 // ───────────────────────────────────────────────────────────
 
-/** §5.1-① 突発ランダムイベント。 */
+/** §5.1-① 突発ランダムイベント。apply は全体/即時の状態変更。 */
 export interface RandomEvent {
   id: string
   name: string
+  /** フレーバー文（状況描写）。現実用語を含めるとツールチップ対象になる。 */
   description: string
-  /** 発生確率（0〜1）。 */
-  probability: number
+  /** 効果の端的な表記（例: 「活発度 +40」）。フレーバーとは別に明示する。 */
+  effect: string
+  /** 1件として抽選される相対的な重み（rollEvent 内で正規化）。 */
+  weight: number
+  /** 説明文中で用語ツールチップ対象となる現実用語。 */
+  realTerms?: string[]
+  apply: (game: GameState) => GameState
 }
 
 /** §5.1-② 本日の議題（コスト無料・純バフ）。 */
 export interface Agenda {
   id: string
   name: string
+  /** フレーバー文（状況描写）。現実用語を含めるとツールチップ対象になる。 */
   description: string
+  /** 効果の端的な表記（例: 「活発度 -15」）。フレーバーとは別に明示する。 */
+  effect: string
+  realTerms?: string[]
+  apply: (game: GameState) => GameState
 }
 
 /** §5.2 対策コマンドの種別。 */
