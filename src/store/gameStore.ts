@@ -13,11 +13,15 @@ import {
   resolveEncounterPhase,
   type EncounterEvent,
 } from '@/engine/turn'
+import { pickAgendas, rollEvent, applyAgenda, applyEvent } from '@/engine/agenda'
+import { applySeasonalActiveness, seasonalActiveness } from '@/engine/season'
 import type {
   ActionKind,
+  Agenda,
   DistrictId,
   DistrictState,
   GameState,
+  RandomEvent,
   StageDef,
 } from '@/types'
 
@@ -49,8 +53,40 @@ export function createInitialGameState(stage: StageDef): GameState {
     budget: stage.initialBudget,
     instructionPoints: INSTRUCTION_POINTS_PER_TURN,
     dissatisfaction: 0,
-    activeness: 20, // 初期活発度（暫定）
+    activeness: seasonalActiveness(1, stage.maxTurns), // 盛夏の基準活発度から開始
     districts: initDistrictStates(stage),
+  }
+}
+
+/** 週の開始：イベント抽選＆即適用、アジェンダ3枚抽選。返り値で state を組む。 */
+function beginTurn(game: GameState): {
+  game: GameState
+  currentEvent: RandomEvent | null
+  agendaChoices: Agenda[]
+  selectedAgendaId: null
+  tentativeAgendaId: null
+} {
+  // 第1週は導入として突発イベント・議題を発生させず、すぐ対策フェーズへ。
+  if (game.turn === 1) {
+    return {
+      game: { ...game, phase: 'action' },
+      currentEvent: null,
+      agendaChoices: [],
+      selectedAgendaId: null,
+      tentativeAgendaId: null,
+    }
+  }
+
+  // 季節の押し上げ（前週比の増分）を先に反映してから、突発イベントを抽選・適用する。
+  const seasoned = applySeasonalActiveness(game)
+  const event = rollEvent()
+  const next = event ? applyEvent(seasoned, event) : seasoned
+  return {
+    game: { ...next, phase: 'agenda' },
+    currentEvent: event,
+    agendaChoices: pickAgendas(),
+    selectedAgendaId: null,
+    tentativeAgendaId: null,
   }
 }
 
@@ -63,6 +99,14 @@ interface GameStore {
   selectedDistrictId: DistrictId | null
   /** 直近の遭遇フェーズで発生したイベント（UI 表示用）。 */
   lastEvents: EncounterEvent[]
+  /** 今週発生した突発イベント。null = 発生なし or 確認済み。 */
+  currentEvent: RandomEvent | null
+  /** 今週選べるアジェンダ3枚。 */
+  agendaChoices: Agenda[]
+  /** 確定済みアジェンダの id。null = 未確定。 */
+  selectedAgendaId: string | null
+  /** 仮選択中（決定前）のアジェンダ id。null = 未選択。 */
+  tentativeAgendaId: string | null
 
   /** ステージを選んでゲームを初期化する。 */
   startStage: (stage: StageDef) => void
@@ -76,6 +120,12 @@ interface GameStore {
   advancePhase: () => void
   /** ゲームをリセットする。 */
   reset: () => void
+  /** 突発イベントを確認して閉じる。 */
+  dismissEvent: () => void
+  /** アジェンダを仮選択する（決定前。確定はしない）。 */
+  selectAgenda: (id: string) => void
+  /** 仮選択中のアジェンダを確定し、対策フェーズへ移行する。 */
+  confirmAgenda: () => void
 }
 
 export const useGameStore = create<GameStore>((set, get) => ({
@@ -83,14 +133,20 @@ export const useGameStore = create<GameStore>((set, get) => ({
   game: null,
   selectedDistrictId: null,
   lastEvents: [],
+  currentEvent: null,
+  agendaChoices: [],
+  selectedAgendaId: null,
+  tentativeAgendaId: null,
 
-  startStage: (stage) =>
+  startStage: (stage) => {
+    const base = createInitialGameState(stage)
     set({
       stage,
-      game: createInitialGameState(stage),
       selectedDistrictId: stage.districts[0]?.id ?? null,
       lastEvents: [],
-    }),
+      ...beginTurn(base),
+    })
+  },
 
   selectDistrict: (id) => set({ selectedDistrictId: id }),
 
@@ -114,10 +170,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
       switch (game.phase) {
         case 'agenda':
-          return { game: { ...game, phase: 'action' } }
+          // アジェンダ選択は chooseAgenda で行うため、ここでは進めない
+          return state
 
         case 'action': {
-          // 遭遇フェーズを解決
           const { game: resolved, events } = resolveEncounterPhase(game, stage, activeRiskModel)
           const phase = resolved.dissatisfaction >= 100 ? 'gameover' : 'encounter'
           return { game: { ...resolved, phase }, lastEvents: events }
@@ -129,13 +185,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
             return { game: { ...game, phase: 'victory' } }
           }
           return {
-            game: {
+            lastEvents: [],
+            ...beginTurn({
               ...game,
               turn: nextTurn,
-              phase: 'agenda',
               instructionPoints: INSTRUCTION_POINTS_PER_TURN,
-            },
-            lastEvents: [],
+            }),
           }
         }
 
@@ -144,5 +199,37 @@ export const useGameStore = create<GameStore>((set, get) => ({
       }
     }),
 
-  reset: () => set({ stage: null, game: null, selectedDistrictId: null, lastEvents: [] }),
+  reset: () =>
+    set({
+      stage: null,
+      game: null,
+      selectedDistrictId: null,
+      lastEvents: [],
+      currentEvent: null,
+      agendaChoices: [],
+      selectedAgendaId: null,
+      tentativeAgendaId: null,
+    }),
+
+  dismissEvent: () => set({ currentEvent: null }),
+
+  selectAgenda: (id) =>
+    set((state) => {
+      // 議題フェーズかつ未確定のときだけ仮選択を許可（決定までは適用しない）
+      if (!state.game || state.game.phase !== 'agenda' || state.selectedAgendaId) return state
+      if (!state.agendaChoices.some((a) => a.id === id)) return state
+      return { tentativeAgendaId: id }
+    }),
+
+  confirmAgenda: () =>
+    set((state) => {
+      const { game, agendaChoices, selectedAgendaId, tentativeAgendaId } = state
+      if (!game || selectedAgendaId || !tentativeAgendaId) return state
+      const agenda = agendaChoices.find((a) => a.id === tentativeAgendaId)
+      if (!agenda) return state
+      return {
+        game: { ...applyAgenda(game, agenda), phase: 'action' },
+        selectedAgendaId: tentativeAgendaId,
+      }
+    }),
 }))
