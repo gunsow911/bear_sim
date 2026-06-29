@@ -16,9 +16,8 @@ const KIND_META: Record<EncounterEventKind, { icon: string; label: string; color
   'fence-block': { icon: '🛡️', label: '電気柵で防いだ', color: 'text-risk-safe' },
 }
 
-/** 展開カードは画面（地図領域）中央、畳んだピルは上部に置く。 */
-const CARD_POS = 'absolute left-1/2 top-1/2 z-[600] -translate-x-1/2 -translate-y-1/2'
-const PILL_POS = 'absolute left-1/2 top-4 z-[600] -translate-x-1/2'
+/** 畳んだピルはビューポート上部中央に固定。 */
+const PILL_POS = 'fixed left-1/2 top-16 z-[700] -translate-x-1/2'
 
 export function EncounterReveal() {
   const phase = useGameStore((s) => s.game?.phase)
@@ -58,12 +57,18 @@ export function EncounterReveal() {
       {active && !minimized && (
         <motion.div
           key="card"
-          className={`${CARD_POS} w-[92%] max-w-md rounded-xl border border-panel-border bg-panel-light/95 p-4 shadow-2xl backdrop-blur`}
-          initial={{ y: -16, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: -16, opacity: 0 }}
+          className="fixed inset-0 z-[700] flex items-center justify-center bg-black/40 p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
         >
-          <h3 className="mb-2 font-bold">{summary}</h3>
+          <motion.div
+            className="w-full max-w-md rounded-xl border border-panel-border bg-panel-light p-4 shadow-2xl"
+            initial={{ scale: 0.95, y: 10 }}
+            animate={{ scale: 1, y: 0 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+          >
+            <h3 className="mb-2 font-bold">{summary}</h3>
 
           {events.length > 0 && (
             <ul className="mb-3 flex flex-col gap-1.5 text-sm">
@@ -118,6 +123,7 @@ export function EncounterReveal() {
               )}
             </div>
           </div>
+          </motion.div>
         </motion.div>
       )}
     </AnimatePresence>
