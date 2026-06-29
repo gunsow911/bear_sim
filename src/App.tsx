@@ -61,7 +61,7 @@ function Hud() {
           <span className="ml-2 text-slate-400">あと{game.maxTurns - game.turn + 1}週</span>
         </span>
         <span>
-          予算 <b>{Math.round(game.budget / 10000).toLocaleString()}</b> 万円
+          予算 <b>{game.budget.toLocaleString()}</b> 万円
         </span>
         <span>
           指示P <b>{game.instructionPoints}</b>
@@ -300,7 +300,7 @@ function ActionBar() {
           >
             <span className="font-bold">{a.name}</span>
             <span className="ml-2 text-xs text-slate-400">
-              {a.budgetCost > 0 ? `${(a.budgetCost / 10000).toFixed(0)}万円` : '予算0'} / 指示
+              {a.budgetCost > 0 ? `${a.budgetCost}万円` : '予算0'} / 指示
               {a.instructionPointCost}
             </span>
           </button>

@@ -56,7 +56,7 @@ export interface DistrictDef {
 export interface StageDef {
   id: StageId
   name: string
-  /** §3 自治体規模により異なる初期予算。 */
+  /** §3 自治体規模により異なる初期予算（万円）。 */
   initialBudget: number
   /** §6 防衛期間（耐え抜くべきターン数）。 */
   maxTurns: number
@@ -110,7 +110,7 @@ export interface GameState {
   maxTurns: number
 
   // §3 リソース
-  /** 予算（切り崩し型・有限）。 */
+  /** 予算（万円。切り崩し型・有限。最小単位は万で端数は出さない）。 */
   budget: number
   /** 指示ポイント（毎ターン全回復）。 */
   instructionPoints: number
@@ -175,7 +175,7 @@ export type ActionKind =
 export interface ActionDef {
   kind: ActionKind
   name: string
-  /** 予算コスト（円）。 */
+  /** 予算コスト（万円）。 */
   budgetCost: number
   /** 指示ポイントコスト。 */
   instructionPointCost: number

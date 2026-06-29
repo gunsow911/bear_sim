@@ -9,7 +9,7 @@ export const AGENDAS: Agenda[] = [
     description:
       '相次ぐ出没を受け、臨時議会が招集されました。クマ対策の緊急性を訴え、補正予算が可決。現場に回せる資金にいくらか余裕が生まれます。',
     effect: '予算 +10万円',
-    apply: (g): GameState => ({ ...g, budget: g.budget + 100_000 }),
+    apply: (g): GameState => ({ ...g, budget: g.budget + 10 }),
   },
   {
     id: 'caution-alert',

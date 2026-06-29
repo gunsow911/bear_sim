@@ -38,6 +38,6 @@ export const EVENTS: RandomEvent[] = [
       '報道を見た地域の有志や学生たちが「力になりたい」と集まってくれました。寄付と差し入れが届き、対策本部の士気も上がります。',
     effect: '予算 +5万円',
     weight: 2,
-    apply: (g): GameState => ({ ...g, budget: g.budget + 50_000 }),
+    apply: (g): GameState => ({ ...g, budget: g.budget + 5 }),
   },
 ]
