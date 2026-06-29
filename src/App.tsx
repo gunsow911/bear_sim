@@ -61,7 +61,7 @@ function Hud() {
           <span className="ml-2 text-slate-400">あと{game.maxTurns - game.turn + 1}週</span>
         </span>
         <span>
-          予算 <b>{game.budget.toLocaleString()}</b> 円
+          予算 <b>{Math.round(game.budget / 10000).toLocaleString()}</b> 万円
         </span>
         <span>
           指示P <b>{game.instructionPoints}</b>
