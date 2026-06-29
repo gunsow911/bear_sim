@@ -173,11 +173,11 @@ function Meter({ label, value, max = 100 }: { label: string; value: number; max?
 }
 
 /**
- * 里山/市街比（satoyama/urban）を割合(%)に変換する。
- * 例: ratio 4.0 → 里山80% / 市街20%、ratio 0.3 → 里山23% / 市街77%。
+ * 里山率（0〜1）を里山/市街の割合(%)に変換する。
+ * 例: 0.8 → 里山80% / 市街20%。
  */
-function landComposition(ratio: number): { satoyama: number; urban: number } {
-  const satoyama = Math.round((ratio / (ratio + 1)) * 100)
+function landComposition(satoyamaRatio: number): { satoyama: number; urban: number } {
+  const satoyama = Math.round(satoyamaRatio * 100)
   return { satoyama, urban: 100 - satoyama }
 }
 
@@ -193,7 +193,7 @@ function DistrictDetail() {
 
   const def = stage.districts.find((d) => d.id === selectedId)
   const ds = selectedId ? game.districts[selectedId] : undefined
-  const pct = def ? landComposition(def.satoyamaUrbanRatio) : { satoyama: 0, urban: 0 }
+  const pct = def ? landComposition(def.satoyamaRatio) : { satoyama: 0, urban: 0 }
 
   return (
     <section className="flex flex-col gap-3 border-t border-panel-border bg-panel-light px-4 py-3">

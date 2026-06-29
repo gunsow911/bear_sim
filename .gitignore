@@ -20,3 +20,6 @@ coverage
 
 # TypeScript incremental build info
 *.tsbuildinfo
+
+# 生データ（e-Stat シェープファイル等）。生成物 src/data/districtsGeo.ts のみ追跡する
+data_raw/

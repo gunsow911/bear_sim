@@ -25,7 +25,8 @@ export interface ModelCoefficients {
 }
 
 export const DEFAULT_COEFFICIENTS: ModelCoefficients = {
-  scale: 0.5,
+  // 里山率（0〜1）が分母のため、比(0〜∞)時代より分母が小さい。scale を下げて調整。
+  scale: 0.05,
   breachThreshold: 50,
   baseMobility: 0.2,
   waterBonus: 0.15,
@@ -73,7 +74,7 @@ export interface SatoyamaRiseInput {
 
 /**
  * §4.3 里山遭遇率の上昇度
- *   = S * {(活発度 * 生息密度) / 里山市街比}        … 山林隣接地区のみ
+ *   = S * {(活発度 * 生息密度) / 里山率}          … 山林隣接地区のみ
  *   + Σ(移動しやすさ * 隣接の里山遭遇率)
  *   + 人間の介入
  */
@@ -83,7 +84,7 @@ export function satoyamaRise(input: SatoyamaRiseInput): number {
 
   // 第1項：山林からの直接流入（山林隣接地区のみ）
   const directInflux = district.mountainAdjacent
-    ? coeff.scale * ((activeness * district.baseDensity) / district.satoyamaUrbanRatio)
+    ? coeff.scale * ((activeness * district.baseDensity) / district.satoyamaRatio)
     : 0
 
   // 第2項：隣接地区からの侵入（移動しやすさ × 隣接の里山遭遇率の総和）
@@ -109,10 +110,10 @@ export interface UrbanRiseInput {
 
 /**
  * §4.4 市街遭遇率の上昇度（防波堤決壊モデル）
- *   = max(0, 里山遭遇率 - 決壊係数) * (人間の介入 / 里山市街比)
+ *   = max(0, 里山遭遇率 - 決壊係数) * (人間の介入 / 里山率)
  *
  * 里山遭遇率が決壊係数以下なら 0（クマは里山で引き返す）。
- * 里山市街比が小さい都市型地区ほど分母が小さく、決壊時に乗算でバーストする。
+ * 里山率が小さい都市型地区ほど分母が小さく、決壊時に乗算でバーストする。
  */
 export function urbanRise(input: UrbanRiseInput): number {
   const coeff = input.coeff ?? DEFAULT_COEFFICIENTS
@@ -121,5 +122,5 @@ export function urbanRise(input: UrbanRiseInput): number {
   const overflow = Math.max(0, satoyamaEncounterRate - coeff.breachThreshold)
   if (overflow === 0) return 0
 
-  return overflow * (humanIntervention / district.satoyamaUrbanRatio)
+  return overflow * (humanIntervention / district.satoyamaRatio)
 }

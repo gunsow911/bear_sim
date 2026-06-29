@@ -39,8 +39,8 @@ npm run typecheck
 
 - [x] **Step 1 足場**: Vite/React/TS/Tailwind/Zustand/Vitest/react-leaflet 導入、型定義、エンジン骨格、地図基盤
 - [x] **Step 2 ゲームエンジン**: §4 数理モデル（差し替え可能な RiskModel）・§5.2 対策・§5.3 遭遇判定・§6 勝敗をストアに統合（数値は仮）
-- [ ] **Step 3 データ**: 実データ由来の `stages.json` / `districts.geojson`
-- [ ] **Step 4 地図UI**: GeoJSON choropleth ＋ クリック選択
+- [x] **Step 3 データ**: e-Stat 小地域から山口市7地区の境界を生成（`npm run build:geojson`）。docs/DATA.md
+- [x] **Step 4 地図UI**: GeoJSON choropleth（遭遇率で色分け）＋ クリックで地区選択、全域オートフィット
 - [ ] **Step 5 ダッシュボード/フェーズUI**: 議題カード・対策コマンド・イベント・演出
 - [ ] **Step 6 ステージ選択**: 全19市町
 - [ ] **Step 7 仕上げ**: ビジュアル調整・デプロイ
