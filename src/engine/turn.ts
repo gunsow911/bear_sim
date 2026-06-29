@@ -85,6 +85,8 @@ export interface EncounterEvent {
   message: string
   /** この出没で加算された不満度（電気柵で防いだ場合は 0）。 */
   dissatisfactionDelta: number
+  /** 出没を引き起こした遭遇率(0〜100)。里山/電気柵は里山遭遇率、市街は市街遭遇率。 */
+  rate: number
 }
 
 export interface EncounterResult {
@@ -158,6 +160,7 @@ export function resolveEncounterPhase(
           kind: 'fence-block',
           message: `${def.name}：電気柵が里山の遭遇を防いだ`,
           dissatisfactionDelta: 0,
+          rate: satoyama,
         })
       } else {
         dissatisfaction += model.params.damage.satoyama
@@ -166,6 +169,7 @@ export function resolveEncounterPhase(
           kind: 'satoyama',
           message: `${def.name}：里山でクマ出没（不満度+${model.params.damage.satoyama}）`,
           dissatisfactionDelta: model.params.damage.satoyama,
+          rate: satoyama,
         })
       }
     }
@@ -178,18 +182,20 @@ export function resolveEncounterPhase(
         kind: 'urban',
         message: `${def.name}：市街地でクマ出没（不満度+${model.params.damage.urban}）`,
         dissatisfactionDelta: model.params.damage.urban,
+        rate: urban,
       })
     }
 
-    // 出没した遭遇率は8割減で保存し、連続出没・詰みを緩和する
-    const decay = model.params.sightedRateFactor
-
+    // 遭遇率はこの週の値のまま保存（遭遇時の%を確認できるように）。
+    // 遭遇補正（減衰）は翌週開始時に applySightingDecay で適用する（遅延）。
     newDistricts[def.id] = {
       ...ds,
-      satoyamaEncounterRate: satoyamaHit ? satoyama * decay : satoyama,
-      urbanEncounterRate: urbanHit ? urban * decay : urban,
+      satoyamaEncounterRate: satoyama,
+      urbanEncounterRate: urban,
       electricFenceActive: fenceActive,
       mowingBlockTurns: Math.max(0, ds.mowingBlockTurns - 1),
+      pendingDecaySatoyama: satoyamaHit,
+      pendingDecayUrban: urbanHit,
       // 放置時の自然増（対策で打ち消されていなければじわじわ上がる）
       intervention: {
         satoyama: ds.intervention.satoyama + model.params.neglectDrift.satoyama,
@@ -202,4 +208,25 @@ export function resolveEncounterPhase(
     game: { ...game, districts: newDistricts, dissatisfaction: clamp(dissatisfaction, 0, 100) },
     events,
   }
+}
+
+/**
+ * 前週に出没した地区の遭遇率を減衰させる（遭遇補正の遅延適用）。
+ * 翌週開始時に1度だけ呼び、pendingDecay フラグを消費する。
+ */
+export function applySightingDecay(game: GameState, model: RiskModel): GameState {
+  const factor = model.params.sightedRateFactor
+  const districts: Record<DistrictId, DistrictState> = {}
+  for (const [id, d] of Object.entries(game.districts)) {
+    districts[id] = {
+      ...d,
+      satoyamaEncounterRate: d.pendingDecaySatoyama
+        ? d.satoyamaEncounterRate * factor
+        : d.satoyamaEncounterRate,
+      urbanEncounterRate: d.pendingDecayUrban ? d.urbanEncounterRate * factor : d.urbanEncounterRate,
+      pendingDecaySatoyama: false,
+      pendingDecayUrban: false,
+    }
+  }
+  return { ...game, districts }
 }

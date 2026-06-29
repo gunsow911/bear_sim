@@ -87,6 +87,10 @@ export interface DistrictState {
   electricFenceActive: boolean
   /** §5.2-1 広域草刈りによる流入遮断の残りターン数。 */
   mowingBlockTurns: number
+  /** 今週出没したため、翌週開始時に里山遭遇率を減衰させる（遭遇補正の遅延適用）。 */
+  pendingDecaySatoyama: boolean
+  /** 今週出没したため、翌週開始時に市街遭遇率を減衰させる。 */
+  pendingDecayUrban: boolean
 }
 
 /** コア・ループのフェーズ（§2.1）。 */

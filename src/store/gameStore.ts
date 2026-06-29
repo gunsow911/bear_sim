@@ -9,6 +9,7 @@ import { create } from 'zustand'
 import { activeRiskModel } from '@/engine/model'
 import {
   applyAction as applyActionEngine,
+  applySightingDecay,
   canAfford,
   resolveEncounterPhase,
   type EncounterEvent,
@@ -46,6 +47,8 @@ function initDistrictStates(stage: StageDef): Record<DistrictId, DistrictState> 
       intervention: { satoyama: 0, urban: 1 },
       electricFenceActive: false,
       mowingBlockTurns: 0,
+      pendingDecaySatoyama: false,
+      pendingDecayUrban: false,
     },
   ])
   return Object.fromEntries(entries)
@@ -84,8 +87,10 @@ function beginTurn(game: GameState): {
     }
   }
 
-  // 季節の押し上げ（前週比の増分）を先に反映してから、突発イベントを抽選・適用する。
-  const seasoned = applySeasonalActiveness(game)
+  // まず前週に出没した地区の遭遇率を減衰（遭遇補正の遅延適用）。
+  // 続いて季節の押し上げ（前週比の増分）を反映し、突発イベントを抽選・適用する。
+  const decayed = applySightingDecay(game, activeRiskModel)
+  const seasoned = applySeasonalActiveness(decayed)
   const event = rollEvent()
   const next = event ? applyEvent(seasoned, event) : seasoned
   return {

@@ -16,7 +16,9 @@ const KIND_META: Record<EncounterEventKind, { icon: string; label: string; color
   'fence-block': { icon: '🛡️', label: '電気柵で防いだ', color: 'text-risk-safe' },
 }
 
-const WRAP = 'absolute left-1/2 top-4 z-[600] -translate-x-1/2'
+/** 展開カードは画面（地図領域）中央、畳んだピルは上部に置く。 */
+const CARD_POS = 'absolute left-1/2 top-1/2 z-[600] -translate-x-1/2 -translate-y-1/2'
+const PILL_POS = 'absolute left-1/2 top-4 z-[600] -translate-x-1/2'
 
 export function EncounterReveal() {
   const phase = useGameStore((s) => s.game?.phase)
@@ -43,7 +45,7 @@ export function EncounterReveal() {
       {active && minimized && (
         <motion.button
           key="pill"
-          className={`${WRAP} rounded-full border border-panel-border bg-panel-light/95 px-4 py-1.5 text-sm font-bold shadow-lg backdrop-blur transition hover:bg-panel`}
+          className={`${PILL_POS} rounded-full border border-panel-border bg-panel-light/95 px-4 py-1.5 text-sm font-bold shadow-lg backdrop-blur transition hover:bg-panel`}
           initial={{ y: -12, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -56,7 +58,7 @@ export function EncounterReveal() {
       {active && !minimized && (
         <motion.div
           key="card"
-          className={`${WRAP} w-[92%] max-w-md rounded-xl border border-panel-border bg-panel-light/95 p-4 shadow-2xl backdrop-blur`}
+          className={`${CARD_POS} w-[92%] max-w-md rounded-xl border border-panel-border bg-panel-light/95 p-4 shadow-2xl backdrop-blur`}
           initial={{ y: -16, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: -16, opacity: 0 }}
@@ -73,7 +75,9 @@ export function EncounterReveal() {
                     <span className="w-20 shrink-0 truncate font-bold" title={nameOf(e.districtId)}>
                       {nameOf(e.districtId)}
                     </span>
-                    <span className={`flex-1 ${m.color}`}>{m.label}</span>
+                    <span className={`flex-1 ${m.color}`}>
+                      {m.label} <span className="opacity-70">{Math.round(e.rate)}%</span>
+                    </span>
                     {e.dissatisfactionDelta > 0 && (
                       <span className="shrink-0 font-bold text-risk-critical">
                         不満+{e.dissatisfactionDelta}

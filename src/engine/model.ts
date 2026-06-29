@@ -20,7 +20,7 @@ import {
 export interface RiskModelParams {
   /** 出現確率 = clamp01(rate/100 * occurrenceSensitivity)。 */
   occurrenceSensitivity: number
-  /** 出没した地区の遭遇率に掛ける倍率（0.2 = 8割減）。出没で遭遇率が一旦下がり、連続出没を緩和。 */
+  /** 出没した地区の遭遇率に掛ける倍率。出没で遭遇率が一旦下がり、連続出没を緩和する（小さいほど強く減衰）。 */
   sightedRateFactor: number
   /** 出現時の不満度加算（§5.3）。 */
   damage: { satoyama: number; urban: number }
@@ -71,7 +71,7 @@ export function createRiskModel(
 /** 標準モデル（仮の数値）。 */
 export const defaultRiskModel: RiskModel = createRiskModel('default', DEFAULT_COEFFICIENTS, {
   occurrenceSensitivity: 1,
-  sightedRateFactor: 0.2, // 出没した地区の遭遇率を8割減
+  sightedRateFactor: 0.2, // 出没した地区の遭遇率に掛ける倍率
 
   damage: { satoyama: 10, urban: 30 },
   actionEffects: {
