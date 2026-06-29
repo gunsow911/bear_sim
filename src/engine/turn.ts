@@ -144,8 +144,11 @@ export function resolveEncounterPhase(
 
     let fenceActive = ds.electricFenceActive
 
+    const satoyamaHit = rng() < model.occurrenceProbability(satoyama)
+    const urbanHit = rng() < model.occurrenceProbability(urban)
+
     // 里山出現
-    if (rng() < model.occurrenceProbability(satoyama)) {
+    if (satoyamaHit) {
       if (fenceActive) {
         fenceActive = false // §5.2-3 電気柵が1度だけ無効化
         events.push({
@@ -164,7 +167,7 @@ export function resolveEncounterPhase(
     }
 
     // 市街出現
-    if (rng() < model.occurrenceProbability(urban)) {
+    if (urbanHit) {
       dissatisfaction += model.params.damage.urban
       events.push({
         districtId: def.id,
@@ -173,10 +176,13 @@ export function resolveEncounterPhase(
       })
     }
 
+    // 出没した遭遇率は8割減で保存し、連続出没・詰みを緩和する
+    const decay = model.params.sightedRateFactor
+
     newDistricts[def.id] = {
       ...ds,
-      satoyamaEncounterRate: satoyama,
-      urbanEncounterRate: urban,
+      satoyamaEncounterRate: satoyamaHit ? satoyama * decay : satoyama,
+      urbanEncounterRate: urbanHit ? urban * decay : urban,
       electricFenceActive: fenceActive,
       mowingBlockTurns: Math.max(0, ds.mowingBlockTurns - 1),
       // 放置時の自然増（対策で打ち消されていなければじわじわ上がる）

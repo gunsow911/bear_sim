@@ -10,9 +10,9 @@ import type { Adjacency, DistrictDef, DistrictFeature } from '@/types'
 
 /** 数理モデルのチューニング係数。バランス調整の単一の入口。 */
 export interface ModelCoefficients {
-  /** §4.3 全体スケール係数 S。 */
+  /** 全体スケール係数 S。 */
   scale: number
-  /** §4.4 防波堤の決壊係数（この閾値を超えた里山遭遇率だけが市街へ溢れる）。 */
+  /** 防波堤の決壊係数（この閾値を超えた里山遭遇率だけが市街へ溢れる）。 */
   breachThreshold: number
   /** 隣接の基礎移動しやすさ。 */
   baseMobility: number
