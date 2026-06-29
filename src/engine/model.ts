@@ -18,8 +18,13 @@ import {
 
 /** 数式以外の数理パラメータ（出現・被害・対策効果・放置増）。すべて仮。 */
 export interface RiskModelParams {
-  /** 出現確率 = clamp01(rate/100 * occurrenceSensitivity)。 */
+  /** 出現確率の基礎係数（遭遇率/100 に掛ける）。 */
   occurrenceSensitivity: number
+  /**
+   * 出現確率カーブのべき指数。>1 で低い遭遇率の出没を強く抑制し、高い遭遇率はほぼ維持する
+   * （「複数の偶然が重ならないと出没しない」感を出す）。1 なら遭遇率がそのまま確率。
+   */
+  occurrenceExponent: number
   /** 出没した地区の遭遇率に掛ける倍率。出没で遭遇率が一旦下がり、連続出没を緩和する（小さいほど強く減衰）。 */
   sightedRateFactor: number
   /** 出現時の不満度加算（§5.3）。 */
@@ -64,13 +69,15 @@ export function createRiskModel(
     params,
     satoyamaRise: (input) => satoyamaRiseFormula({ ...input, coeff: coefficients }),
     urbanRise: (input) => urbanRiseFormula({ ...input, coeff: coefficients }),
-    occurrenceProbability: (rate) => clamp01((rate / 100) * params.occurrenceSensitivity),
+    occurrenceProbability: (rate) =>
+      clamp01(Math.pow(clamp01((rate / 100) * params.occurrenceSensitivity), params.occurrenceExponent)),
   }
 }
 
 /** 標準モデル（仮の数値）。 */
 export const defaultRiskModel: RiskModel = createRiskModel('default', DEFAULT_COEFFICIENTS, {
   occurrenceSensitivity: 1,
+  occurrenceExponent: 1.5, // 低い遭遇率の出没を抑制（>1）
   sightedRateFactor: 0.2, // 出没した地区の遭遇率に掛ける倍率
 
   damage: { satoyama: 10, urban: 30 },
