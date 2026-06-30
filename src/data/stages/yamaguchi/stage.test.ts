@@ -2,11 +2,11 @@ import { describe, it, expect } from 'vitest'
 import { yamaguchiStage } from './stage'
 import { districtsGeo } from './districtsGeo'
 
-describe('yamaguchiStage（9地区ステージ定義）', () => {
+describe('yamaguchiStage（10地区ステージ定義）', () => {
   const ids = yamaguchiStage.districts.map((d) => d.id)
 
-  it('地区数が9', () => {
-    expect(yamaguchiStage.districts).toHaveLength(9)
+  it('地区数が10', () => {
+    expect(yamaguchiStage.districts).toHaveLength(10)
   })
 
   it('district id が districtsGeo の districtId と1:1一致', () => {
@@ -31,6 +31,22 @@ describe('yamaguchiStage（9地区ステージ定義）', () => {
         expect(has(a.to, d.id)).toBe(true)
       }
     }
+  })
+
+  it('隣接グラフは連結（孤立した地区が無い＝全地区に到達できる）', () => {
+    const byId = new Map(yamaguchiStage.districts.map((d) => [d.id, d]))
+    const seen = new Set<string>([ids[0]])
+    const queue = [ids[0]]
+    while (queue.length) {
+      const cur = queue.shift()!
+      for (const a of byId.get(cur)!.adjacencies) {
+        if (!seen.has(a.to)) {
+          seen.add(a.to)
+          queue.push(a.to)
+        }
+      }
+    }
+    expect(seen.size).toBe(ids.length)
   })
 
   it('satoyamaRatio は 0〜1、baseDensity は正', () => {

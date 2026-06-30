@@ -24,15 +24,21 @@ const INPUT = join(ROOT, 'data_raw/yamaguchi/r2kb35203.shp')
 const OUTPUT_TS = join(ROOT, 'src/data/stages/yamaguchi/districtsGeo.ts')
 
 // ── 地区分けルール（字名 S_NAME → districtId）。上から順に評価。
+//    注: 必ずアンカー(^)で判定する。実データの字名は
+//      ・小鯖 → 「上小鯖 / 下小鯖」（^小鯖 では取りこぼす）
+//      ・仁保津 → 「小郡上郷仁保津…」（= 小郡。contains 判定だと niho に誤混入）
+//      ・青葉台 → 大内地区の団地（無印「青葉台」。未指定だと中心市街へ漏れて飛び地化）
+//      ・江崎 / 深溝 → 南部沿岸平野（未指定だと中心市街へ漏れて南西飛び地化）
 const DISTRICT_RULE = `
   /^阿東/.test(S_NAME) ? 'ato'
   : /^徳地/.test(S_NAME) ? 'tokuji'
   : /^宮野/.test(S_NAME) ? 'miyano'
-  : /^(仁保|小鯖)/.test(S_NAME) ? 'niho'
-  : /^(大内|吉敷)/.test(S_NAME) ? 'ouchi'
+  : /^(仁保|[上下]?小鯖)/.test(S_NAME) ? 'niho'
+  : /^(大内|青葉台)/.test(S_NAME) ? 'ouchi'
+  : /^吉敷/.test(S_NAME) ? 'yoshiki'
   : /^小郡/.test(S_NAME) ? 'ogori'
   : /^阿知須/.test(S_NAME) ? 'ajisu'
-  : /^(名田島|佐山|嘉川|陶|鋳銭司|秋穂二島|秋穂)/.test(S_NAME) ? 'nanbu'
+  : /^(名田島|佐山|嘉川|陶|鋳銭司|秋穂二島|秋穂|江崎|深溝)/.test(S_NAME) ? 'nanbu'
   : 'center'
 `.replace(/\s+/g, ' ').trim()
 
@@ -41,7 +47,8 @@ const DISTRICT_NAMES = {
   tokuji: '徳地地区',
   miyano: '宮野地区',
   niho: '仁保・小鯖地区',
-  ouchi: '大内・吉敷地区',
+  ouchi: '大内地区',
+  yoshiki: '吉敷地区',
   center: '中心市街',
   ogori: '小郡地区',
   nanbu: '南部平野地区',
@@ -49,7 +56,7 @@ const DISTRICT_NAMES = {
 }
 
 // 出力の地区並び順（凡例・リストの並び＝里山→市街の勾配順）
-const ORDER = ['ato', 'tokuji', 'miyano', 'niho', 'ouchi', 'center', 'ogori', 'nanbu', 'ajisu']
+const ORDER = ['ato', 'tokuji', 'miyano', 'niho', 'ouchi', 'yoshiki', 'center', 'ogori', 'nanbu', 'ajisu']
 
 async function main() {
   const scratch = mkdtempSync(join(tmpdir(), 'bearsim-geo-'))
@@ -63,13 +70,17 @@ async function main() {
       .join(',') +
     '}'
   const command = [
-    `-i "${INPUT}" encoding=shift_jis`,
+    // snap: e-Stat 基本単位区は隣接境界が完全一致しておらず、そのまま溶かすと
+    //   無数の隙間(穴)と断片が生じる。取り込み時にスナップして境界を一致させる。
+    `-i "${INPUT}" encoding=shift_jis snap`,
     `-each "districtId = ${DISTRICT_RULE}"`,
     `-dissolve2 districtId`,
     `-each "name = (${nameMapLiteral})[districtId]"`,
     `-filter-fields districtId,name`,
+    // gap-fill-area: 溶かした後に残る小さな隙間を、最長境界を共有する隣接地区へ
+    //   割り当てて埋める（市域を隙間なく9地区で充填する）。
+    `-clean gap-fill-area=2km2`,
     `-simplify 6% keep-shapes`,
-    `-clean`,
     `-o "${tmpGeojson}" format=geojson precision=0.0001`,
   ].join(' ')
 
@@ -77,6 +88,31 @@ async function main() {
   await mapshaper.runCommands(command)
 
   const fc = JSON.parse(readFileSync(tmpGeojson, 'utf8'))
+
+  // ── 内部の小さな穴を埋める（地区が囲む小空洞をその地区へ吸収）。
+  //    各ポリゴンの内側リング(穴)のうち概算面積が FILL_HOLE_KM2 未満のものを削除し、
+  //    山口市内部に白い穴が残らないようにする（外形・離片は保持＝面積は減らさない）。
+  const FILL_HOLE_KM2 = 2
+  const ringAreaKm2 = (ring) => {
+    // 球面近似のシューレース（緯度補正）。符号なし面積を km² で返す。
+    let a = 0
+    for (let i = 0, n = ring.length; i < n; i++) {
+      const [x1, y1] = ring[i]
+      const [x2, y2] = ring[(i + 1) % n]
+      const kx = 111.32 * Math.cos((((y1 + y2) / 2) * Math.PI) / 180)
+      a += x1 * kx * (y2 * 111.32) - x2 * kx * (y1 * 111.32)
+    }
+    return Math.abs(a) / 2
+  }
+  const fillHoles = (poly) => [
+    poly[0],
+    ...poly.slice(1).filter((hole) => ringAreaKm2(hole) >= FILL_HOLE_KM2),
+  ]
+  for (const f of fc.features) {
+    const g = f.geometry
+    if (g.type === 'Polygon') g.coordinates = fillHoles(g.coordinates)
+    else if (g.type === 'MultiPolygon') g.coordinates = g.coordinates.map(fillHoles)
+  }
 
   // 地区順に並べ替え
   fc.features.sort(

@@ -2,15 +2,15 @@ import { describe, it, expect } from 'vitest'
 import { districtsGeo } from './districtsGeo'
 
 const EXPECTED_IDS = [
-  'ato', 'tokuji', 'miyano', 'niho', 'ouchi', 'center', 'ogori', 'nanbu', 'ajisu',
+  'ato', 'tokuji', 'miyano', 'niho', 'ouchi', 'yoshiki', 'center', 'ogori', 'nanbu', 'ajisu',
 ]
 
 describe('districtsGeo（生成境界）', () => {
-  it('Feature 数がちょうど9', () => {
-    expect(districtsGeo.features).toHaveLength(9)
+  it('Feature 数がちょうど10', () => {
+    expect(districtsGeo.features).toHaveLength(10)
   })
 
-  it('districtId 集合が9地区設計と一致する', () => {
+  it('districtId 集合が10地区設計と一致する', () => {
     const ids = districtsGeo.features.map((f) => f.properties.districtId).sort()
     expect(ids).toEqual([...EXPECTED_IDS].sort())
   })
