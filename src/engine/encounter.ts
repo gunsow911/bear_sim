@@ -14,6 +14,11 @@ export interface ModelCoefficients {
   scale: number
   /** 防波堤の決壊係数（この閾値を超えた里山遭遇率だけが市街へ溢れる）。 */
   breachThreshold: number
+  /**
+   * 決壊スケール係数（市街遭遇率の上昇度全体に掛ける、0〜1）。
+   * 1 で従来の急峻な決壊、小さくするほど決壊が緩やかになる。バランス調整の主ノブ。
+   */
+  urbanBreachScale: number
   /** 隣接の基礎移動しやすさ。 */
   baseMobility: number
   /** 🌊 水系接続を両地区が共有する場合の加算。 */
@@ -28,6 +33,7 @@ export const DEFAULT_COEFFICIENTS: ModelCoefficients = {
   // 里山率（0〜1）が分母のため、比(0〜∞)時代より分母が小さい。scale を下げて調整。
   scale: 0.05,
   breachThreshold: 50,
+  urbanBreachScale: 0.5, // 市街決壊を半減（従来は急峻すぎた）
   baseMobility: 0.2,
   waterBonus: 0.15,
   greenCorridorBonus: 0.25,
@@ -110,10 +116,11 @@ export interface UrbanRiseInput {
 
 /**
  * §4.4 市街遭遇率の上昇度（防波堤決壊モデル）
- *   = max(0, 里山遭遇率 - 決壊係数) * (人間の介入 / 里山率)
+ *   = 決壊スケール * max(0, 里山遭遇率 - 決壊係数) * (人間の介入 / 里山率)
  *
  * 里山遭遇率が決壊係数以下なら 0（クマは里山で引き返す）。
  * 里山率が小さい都市型地区ほど分母が小さく、決壊時に乗算でバーストする。
+ * urbanBreachScale で決壊の急峻さ全体を抑える（既定 0.5 ＝従来の半分の速さ）。
  */
 export function urbanRise(input: UrbanRiseInput): number {
   const coeff = input.coeff ?? DEFAULT_COEFFICIENTS
@@ -122,5 +129,5 @@ export function urbanRise(input: UrbanRiseInput): number {
   const overflow = Math.max(0, satoyamaEncounterRate - coeff.breachThreshold)
   if (overflow === 0) return 0
 
-  return overflow * (humanIntervention / district.satoyamaRatio)
+  return coeff.urbanBreachScale * overflow * (humanIntervention / district.satoyamaRatio)
 }
