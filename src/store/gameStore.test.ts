@@ -13,7 +13,6 @@ describe('gameStore 予約（pendingActions）', () => {
   it('toggleAction で選択地区に予約が追加される', () => {
     s().toggleAction('clean-up')
     expect(s().pendingActions).toEqual([{ districtId: 'ato', kind: 'clean-up' }])
-    expect(s().reservedBudget()).toBe(10)
     expect(s().reservedPoints()).toBe(1)
     expect(s().isStaged('ato', 'clean-up')).toBe(true)
   })
@@ -22,7 +21,6 @@ describe('gameStore 予約（pendingActions）', () => {
     s().toggleAction('clean-up')
     s().toggleAction('clean-up')
     expect(s().pendingActions).toEqual([])
-    expect(s().reservedBudget()).toBe(0)
     expect(s().isStaged('ato', 'clean-up')).toBe(false)
   })
 
@@ -54,24 +52,18 @@ describe('gameStore 予約（pendingActions）', () => {
     expect(s().canStage('mowing')).toBe(false)
   })
 
-  it('残予算が足りない施策は canStage=false（予算が縛りになる場合）', () => {
-    const g = s().game!
-    useGameStore.setState({ game: { ...g, budget: 20 } })
-    expect(s().canStage('electric-fence')).toBe(false) // 30万 > 20万
-    expect(s().canStage('clean-up')).toBe(true) // 10万 <= 20万
-    expect(s().canStage('mowing')).toBe(true) // 0万
-  })
-
-  it('予約済みの施策は残予算0でも canStage=true（トグルOFFを許可）', () => {
-    const g = s().game!
+  it('指示P枯渇下でも予約済みの施策は canStage=true（トグルOFFを許可）', () => {
     s().selectDistrict('ato')
-    useGameStore.setState({ game: { ...g, budget: 10 } }) // clean-up を1つ予約できる
-    s().toggleAction('clean-up') // 予約成立（budget 10 >= 10）
-    useGameStore.setState({ game: { ...s().game!, budget: 0 } }) // 予算を使い切った状態に
-    // 予約済みなので残予算0でもトグルOFFできるよう canStage は true
-    expect(s().canStage('clean-up')).toBe(true)
-    // 未予約・コスト>0 の電気柵は残予算0で false
-    expect(s().canStage('electric-fence')).toBe(false)
+    s().toggleAction('mowing') // IP1
+    s().selectDistrict('tokuji')
+    s().toggleAction('mowing') // IP2
+    s().selectDistrict('miyano')
+    s().toggleAction('mowing') // IP3（= INSTRUCTION_POINTS_PER_TURN）
+    // 予約済みの地区へ戻れば、残指示P0でもトグルOFFできるよう true
+    s().selectDistrict('ato')
+    expect(s().canStage('mowing')).toBe(true)
+    // 未予約の種別は残指示P0で false
+    expect(s().canStage('clean-up')).toBe(false)
   })
 })
 
@@ -83,15 +75,13 @@ describe('gameStore commitActions', () => {
 
   it('予約を順に適用してリソースを実消費し、遭遇解決後に予約をクリアする', () => {
     s().selectDistrict('ato')
-    s().toggleAction('clean-up') // 10万 / 指示P1
+    s().toggleAction('clean-up') // 指示P1
     s().selectDistrict('tokuji')
-    s().toggleAction('electric-fence') // 30万 / 指示P1
-    expect(s().reservedBudget()).toBe(40)
+    s().toggleAction('electric-fence') // 指示P1
 
     s().commitActions()
 
     const g = s().game!
-    expect(g.budget).toBe(60) // 100 - 40
     expect(g.instructionPoints).toBe(1) // 3 - 2
     expect(s().pendingActions).toEqual([])
     expect(s().actionModalOpen).toBe(false)
@@ -101,7 +91,6 @@ describe('gameStore commitActions', () => {
   it('予約0件でも commit でき、遭遇フェーズへ進む', () => {
     s().commitActions()
     expect(s().game!.phase).toBe('encounter')
-    expect(s().game!.budget).toBe(100) // 消費なし
   })
 
   it('openActionModal / closeActionModal でフラグが切り替わる', () => {
@@ -116,6 +105,5 @@ describe('gameStore commitActions', () => {
     s().openActionModal()
     s().closeActionModal()
     expect(s().pendingActions).toEqual([{ districtId: 'ato', kind: 'clean-up' }])
-    expect(s().game!.budget).toBe(100) // 未消費のまま
   })
 })

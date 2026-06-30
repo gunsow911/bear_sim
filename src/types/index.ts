@@ -56,8 +56,6 @@ export interface DistrictDef {
 export interface StageDef {
   id: StageId
   name: string
-  /** §3 自治体規模により異なる初期予算（万円）。 */
-  initialBudget: number
   /** §6 防衛期間（耐え抜くべきターン数）。 */
   maxTurns: number
   /** §4.1 この市町を構成する 3〜5 地区。 */
@@ -110,8 +108,6 @@ export interface GameState {
   maxTurns: number
 
   // §3 リソース
-  /** 予算（万円。切り崩し型・有限。最小単位は万で端数は出さない）。 */
-  budget: number
   /** 指示ポイント（毎ターン全回復）。 */
   instructionPoints: number
   /** 不満度（蓄積型 HP。100 で敗北）。 */
@@ -167,16 +163,14 @@ export interface GameMessage {
 
 /** §5.2 対策コマンドの種別。 */
 export type ActionKind =
-  | 'mowing' // 広域草刈り（予算0・数ターン流入遮断）
-  | 'clean-up' // クリーン作戦（10万円・永続減少）
-  | 'electric-fence' // 電気柵（30万円・里山遭遇を1度無効化）
+  | 'mowing' // 広域草刈り（数ターン流入遮断）
+  | 'clean-up' // クリーン作戦（永続減少）
+  | 'electric-fence' // 電気柵（里山遭遇を1度無効化）
 
 /** §5.2 対策コマンドの定義。 */
 export interface ActionDef {
   kind: ActionKind
   name: string
-  /** 予算コスト（万円）。 */
-  budgetCost: number
   /** 指示ポイントコスト。 */
   instructionPointCost: number
   /** ナラティブな状況描写文（議題と同テイスト）。 */

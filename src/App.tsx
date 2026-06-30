@@ -54,10 +54,8 @@ function StartScreen() {
 
 function Hud() {
   const game = useGameStore((s) => s.game)
-  const reservedBudget = useGameStore((s) => s.reservedBudget)
   const reservedPoints = useGameStore((s) => s.reservedPoints)
   if (!game) return null
-  const resB = reservedBudget()
   const resP = reservedPoints()
   return (
     <header className="flex items-center justify-between gap-4 border-b border-panel-border bg-panel-light px-4 py-2">
@@ -67,11 +65,7 @@ function Hud() {
           <span className="ml-2 text-slate-400">あと{game.maxTurns - game.turn + 1}週</span>
         </span>
         <span>
-          予算 <b>{game.budget.toLocaleString()}</b> 万円
-          {resB > 0 && <span className="ml-1 text-risk-warn">(−{resB})</span>}
-        </span>
-        <span>
-          指示P <b>{game.instructionPoints}</b>
+          指示 <b>{game.instructionPoints}</b>
           {resP > 0 && <span className="ml-1 text-risk-warn">(−{resP})</span>}
         </span>
         <span>
@@ -340,10 +334,8 @@ function ActionBar() {
         {ACTION_LIST.map((a) => {
           const staged = isStaged(selectedId, a.kind)
           const enabled = canStage(a.kind)
-          const costLabel =
-            a.budgetCost > 0
-              ? `${a.budgetCost}万円 / 指示P${a.instructionPointCost}`
-              : `予算0 / 指示P${a.instructionPointCost}`
+          // 施策は一律1指示なのでコストは表示しない。バフ等で0になったときだけ「無料」を明示。
+          const free = a.instructionPointCost === 0
           return (
             <button
               key={a.kind}
@@ -365,7 +357,7 @@ function ActionBar() {
                 {a.name}
               </span>
               <span className="text-xs text-risk-safe">{a.effectLabel}</span>
-              <span className="text-xs text-slate-400">{costLabel}</span>
+              {free && <span className="text-xs font-bold text-risk-safe">無料</span>}
             </button>
           )
         })}

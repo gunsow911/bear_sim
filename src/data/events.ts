@@ -35,9 +35,9 @@ export const EVENTS: RandomEvent[] = [
     id: 'volunteer',
     name: 'ボランティアの来援',
     description:
-      '報道を見た地域の有志や学生たちが「力になりたい」と集まってくれました。寄付と差し入れが届き、対策本部の士気も上がります。',
-    effect: '予算 +5万円',
+      '報道を見た地域の有志や学生たちが「力になりたい」と集まってくれました。動かせる人手が増え、対策本部の士気も上がります。',
+    effect: '指示 +1',
     weight: 2,
-    apply: (g): GameState => ({ ...g, budget: g.budget + 5 }),
+    apply: (g): GameState => ({ ...g, instructionPoints: g.instructionPoints + 1 }),
   },
 ]

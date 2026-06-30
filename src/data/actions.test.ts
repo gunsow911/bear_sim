@@ -10,6 +10,12 @@ describe('ACTIONS data', () => {
     }
   })
 
+  it('全施策の指示ポイントコストは1（予算撤廃後の不変条件）', () => {
+    for (const a of ACTION_LIST) {
+      expect(a.instructionPointCost).toBe(1)
+    }
+  })
+
   it('3種別すべてが定義されている', () => {
     expect(Object.keys(ACTIONS).sort()).toEqual(
       ['clean-up', 'electric-fence', 'mowing'].sort(),

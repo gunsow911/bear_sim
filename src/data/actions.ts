@@ -10,7 +10,6 @@ export const ACTIONS: Record<ActionKind, ActionDef> = {
   mowing: {
     kind: 'mowing',
     name: '広域草刈り',
-    budgetCost: 0, // 万円
     instructionPointCost: 1,
     flavor:
       '集落と山林の境界を一斉に刈り払い、見通しを確保。やぶに隠れて里へ下りる"けものみち"をしばらく断ちます。',
@@ -20,7 +19,6 @@ export const ACTIONS: Record<ActionKind, ActionDef> = {
   'clean-up': {
     kind: 'clean-up',
     name: 'クリーン作戦',
-    budgetCost: 10, // 万円
     instructionPointCost: 1,
     flavor:
       '放置果樹や生ゴミ（誘引物）を地域ぐるみで一掃。里へ下りてくる動機そのものを恒久的にそぎます。',
@@ -31,7 +29,6 @@ export const ACTIONS: Record<ActionKind, ActionDef> = {
   'electric-fence': {
     kind: 'electric-fence',
     name: '電気柵の設置',
-    budgetCost: 30, // 万円
     instructionPointCost: 1,
     flavor:
       '農地のまわりに侵入防止柵を張りめぐらせます。次に里山から下りてくる出没を、一度だけ確実に食い止めます。',

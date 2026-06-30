@@ -26,7 +26,7 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 /** その対策を実行できるリソースがあるか。 */
 export function canAfford(game: GameState, kind: ActionKind): boolean {
   const a = ACTIONS[kind]
-  return game.budget >= a.budgetCost && game.instructionPoints >= a.instructionPointCost
+  return game.instructionPoints >= a.instructionPointCost
 }
 
 /**
@@ -67,7 +67,6 @@ export function applyAction(
 
   return {
     ...game,
-    budget: game.budget - a.budgetCost,
     instructionPoints: game.instructionPoints - a.instructionPointCost,
     districts: { ...game.districts, [districtId]: next },
   }

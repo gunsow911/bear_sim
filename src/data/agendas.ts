@@ -4,12 +4,12 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 
 export const AGENDAS: Agenda[] = [
   {
-    id: 'emergency-budget',
-    name: '緊急予算の確保',
+    id: 'reinforcement-request',
+    name: '広域連携の応援要請',
     description:
-      '相次ぐ出没を受け、臨時議会が招集されました。クマ対策の緊急性を訴え、補正予算が可決。現場に回せる資金にいくらか余裕が生まれます。',
-    effect: '予算 +10万円',
-    apply: (g): GameState => ({ ...g, budget: g.budget + 10 }),
+      '県と近隣自治体へ広域連携を要請。応援部隊が続々と駆けつけ、今週は動かせる手が大きく増えます。',
+    effect: '指示 +2',
+    apply: (g): GameState => ({ ...g, instructionPoints: g.instructionPoints + 2 }),
   },
   {
     id: 'caution-alert',
@@ -23,8 +23,8 @@ export const AGENDAS: Agenda[] = [
     id: 'mobilize-staff',
     name: '人員動員',
     description:
-      '地元猟友会と市の応援職員に協力を要請。今週はパトロールや対策に動かせる手が一段と増えます。',
-    effect: '指示ポイント +1',
+      '地元の猟友会と市職員に都合をつけてもらい、今ある人員のやりくりで今週は手が1つぶん多く動かせます。',
+    effect: '指示 +1',
     apply: (g): GameState => ({ ...g, instructionPoints: g.instructionPoints + 1 }),
   },
   {

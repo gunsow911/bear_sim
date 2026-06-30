@@ -61,7 +61,6 @@ export function createInitialGameState(stage: StageDef): GameState {
     phase: 'agenda',
     turn: 1,
     maxTurns: stage.maxTurns,
-    budget: stage.initialBudget,
     instructionPoints: INSTRUCTION_POINTS_PER_TURN,
     dissatisfaction: 0,
     activeness: seasonalActiveness(1, stage.maxTurns), // 盛夏の基準活発度から開始
@@ -134,8 +133,6 @@ interface GameStore {
   removeAction: (districtId: DistrictId, kind: ActionKind) => void
   /** 指定地区にその施策が予約済みか。 */
   isStaged: (districtId: DistrictId, kind: ActionKind) => boolean
-  /** 予約合計の予算（万円）。 */
-  reservedBudget: () => number
   /** 予約合計の指示ポイント。 */
   reservedPoints: () => number
   /** その施策を今予約できるか（残リソース・フェーズ）。予約済みなら常に true。 */
@@ -234,9 +231,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
   isStaged: (districtId, kind) =>
     get().pendingActions.some((p) => p.districtId === districtId && p.kind === kind),
 
-  reservedBudget: () =>
-    get().pendingActions.reduce((sum, p) => sum + ACTIONS[p.kind].budgetCost, 0),
-
   reservedPoints: () =>
     get().pendingActions.reduce((sum, p) => sum + ACTIONS[p.kind].instructionPointCost, 0),
 
@@ -246,9 +240,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     // 既に当該地区へ予約済みなら、OFF にできるよう常に許可
     if (get().isStaged(selectedDistrictId, kind)) return true
     const a = ACTIONS[kind]
-    const budgetLeft = game.budget - get().reservedBudget()
     const pointsLeft = game.instructionPoints - get().reservedPoints()
-    return budgetLeft >= a.budgetCost && pointsLeft >= a.instructionPointCost
+    return pointsLeft >= a.instructionPointCost
   },
 
   openActionModal: () => set({ actionModalOpen: true }),
@@ -260,7 +253,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const { game, stage, pendingActions } = state
       if (!game || !stage || game.phase !== 'action') return { ...state, actionModalOpen: false }
 
-      // 1) 予約を配列順に適用（予算・指示Pを実消費）
+      // 1) 予約を配列順に適用（指示Pを実消費）
       let applied = game
       for (const p of pendingActions) {
         applied = applyActionEngine(applied, p.districtId, p.kind, activeRiskModel)

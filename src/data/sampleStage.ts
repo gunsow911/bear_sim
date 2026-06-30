@@ -13,7 +13,6 @@ import type { StageDef } from '@/types'
 export const sampleStage: StageDef = {
   id: 'yamaguchi-city',
   name: '山口市',
-  initialBudget: 100, // 100万円（万円単位）
   maxTurns: 16, // 初夏(6月)〜初秋(9月)の4か月＝16週
   districts: [
     {
