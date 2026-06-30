@@ -2,11 +2,10 @@ import { describe, it, expect } from 'vitest'
 import { ACTIONS, ACTION_LIST } from './actions'
 
 describe('ACTIONS data', () => {
-  it('各施策が flavor / effectLabel / duration を持つ', () => {
+  it('各施策が flavor / effectLabel を持つ', () => {
     for (const a of ACTION_LIST) {
       expect(a.flavor.length).toBeGreaterThan(0)
       expect(a.effectLabel.length).toBeGreaterThan(0)
-      expect(a.duration.length).toBeGreaterThan(0)
     }
   })
 

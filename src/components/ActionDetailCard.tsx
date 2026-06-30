@@ -3,7 +3,7 @@ import { wrapTerms } from './wrapTerms'
 
 /**
  * 施策の詳細カード。施策バーのボタンにホバー／フォーカスしたときに
- * ポップオーバーとして表示する（flavor ＋ 効果 ＋ 持続）。
+ * ポップオーバーとして表示する（flavor ＋ 効果）。
  * 施策は一律1指示なのでコストは表示せず、バフ等で0になったときだけ「無料」を明示する。
  * マスキング維持のため数値の効果量は出さず、質的ラベルのみを示す。
  */
@@ -19,10 +19,6 @@ export function ActionDetailCard({ action }: { action: ActionDef }) {
         <div className="flex gap-2">
           <dt className="shrink-0 text-slate-400">効果</dt>
           <dd className="font-bold text-risk-safe">{action.effectLabel}</dd>
-        </div>
-        <div className="flex gap-2">
-          <dt className="shrink-0 text-slate-400">持続</dt>
-          <dd>{action.duration}</dd>
         </div>
         {free && (
           <div className="flex gap-2">
