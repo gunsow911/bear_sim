@@ -118,6 +118,16 @@ export interface GameState {
 
   /** 地区 ID → 可変状態。 */
   districts: Record<DistrictId, DistrictState>
+
+  /** 一度きりの節目フレーバーを表示済みか（ゲームごとにリセット）。 */
+  milestones: {
+    /** 初の里山出没（被害発生）を表示済み。 */
+    firstSatoyama: boolean
+    /** 初の市街地出没を表示済み。 */
+    firstUrban: boolean
+    /** 不満度が初めて 80% 以上に達したことを表示済み。 */
+    highDissatisfaction: boolean
+  }
 }
 
 // ───────────────────────────────────────────────────────────

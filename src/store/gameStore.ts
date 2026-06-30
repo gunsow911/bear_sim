@@ -17,6 +17,9 @@ import { pickAgendas, rollEvent, applyAgenda, applyEvent } from '@/engine/agenda
 import { applySeasonalActiveness, seasonalActiveness } from '@/engine/season'
 import {
   GAMEOVER_MESSAGES,
+  MILESTONE_FIRST_SATOYAMA,
+  MILESTONE_FIRST_URBAN,
+  MILESTONE_HIGH_DISSATISFACTION,
   OPENING_MESSAGES,
   VICTORY_MESSAGES,
   seasonalMessageForTurn,
@@ -65,6 +68,7 @@ export function createInitialGameState(stage: StageDef): GameState {
     dissatisfaction: 0,
     activeness: seasonalActiveness(1, stage.maxTurns), // 盛夏の基準活発度から開始
     districts: initDistrictStates(stage),
+    milestones: { firstSatoyama: false, firstUrban: false, highDissatisfaction: false },
   }
 }
 
@@ -262,11 +266,30 @@ export const useGameStore = create<GameStore>((set, get) => ({
       // 2) 遭遇フェーズの解決
       const { game: resolved, events } = resolveEncounterPhase(applied, stage, activeRiskModel)
       const over = resolved.dissatisfaction >= 100
+
+      // 3) 一度きりの節目フレーバーを検知（ゲームオーバー時は節目より敗北演出を優先）。
+      const milestones = { ...game.milestones }
+      const milestoneMsgs: GameMessage[] = []
+      if (!over) {
+        if (!milestones.firstSatoyama && events.some((e) => e.kind === 'satoyama')) {
+          milestones.firstSatoyama = true
+          milestoneMsgs.push(MILESTONE_FIRST_SATOYAMA)
+        }
+        if (!milestones.firstUrban && events.some((e) => e.kind === 'urban')) {
+          milestones.firstUrban = true
+          milestoneMsgs.push(MILESTONE_FIRST_URBAN)
+        }
+        if (!milestones.highDissatisfaction && resolved.dissatisfaction >= 80) {
+          milestones.highDissatisfaction = true
+          milestoneMsgs.push(MILESTONE_HIGH_DISSATISFACTION)
+        }
+      }
+
       return {
-        game: { ...resolved, phase: over ? 'gameover' : 'encounter' },
+        game: { ...resolved, milestones, phase: over ? 'gameover' : 'encounter' },
         lastEvents: events,
         dissatisfactionBefore: game.dissatisfaction,
-        messages: over ? GAMEOVER_MESSAGES : [],
+        messages: over ? GAMEOVER_MESSAGES : milestoneMsgs,
         messageIndex: 0,
         pendingActions: [],
         actionModalOpen: false,

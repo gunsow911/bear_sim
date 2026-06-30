@@ -27,6 +27,39 @@ export const OPENING_MESSAGES: GameMessage[] = [
   },
 ]
 
+/** 初めて里山でクマが出没したときに一度だけ表示する節目メッセージ。 */
+export const MILESTONE_FIRST_SATOYAMA: GameMessage = {
+  id: 'milestone-first-satoyama',
+  icon: '🐾',
+  title: '里山にクマが現れた',
+  body:
+    'ついに、里山でクマの出没が確認されました。\n' +
+    '山と人里のあいだにある里山は、クマの侵入を食い止める“最前線”です。ここでの遭遇率を抑えられなければ、やがて防波堤は決壊し、リスクは市街地へと溢れ出します。\n' +
+    '里山を手当てし続けることこそ、被害を未然に防ぐ最大の備えです。',
+}
+
+/** 初めて市街地でクマが出没したときに一度だけ表示する節目メッセージ。 */
+export const MILESTONE_FIRST_URBAN: GameMessage = {
+  id: 'milestone-first-urban',
+  icon: '🐻',
+  title: 'ついに市街地へ',
+  body:
+    'クマがとうとう市街地に現れました。里山の“防波堤”が決壊した証です。\n' +
+    '市街地での出没は、住民の不満を里山の比ではないほど押し上げます。いちど決壊した地区は、わずかなリスクでも一気にあふれ出します。\n' +
+    '手遅れになる前に、その地区を取り囲む里山の遭遇率を立て直してください。',
+}
+
+/** 不満度が初めて 80% 以上に達したときに一度だけ表示する節目メッセージ。 */
+export const MILESTONE_HIGH_DISSATISFACTION: GameMessage = {
+  id: 'milestone-high-dissatisfaction',
+  icon: '⚠️',
+  title: '住民の不満、危険水域',
+  body:
+    '住民の不満度が 80% を超えました。\n' +
+    '100% に達した瞬間、対策本部は住民の信頼を失い、すべては終わります。残された猶予はわずかです。\n' +
+    'とりわけ被害の大きい市街地の出没を何としても止め、これ以上の不満の上昇を抑えてください。',
+}
+
 /** 防衛成功（クリア）時に表示するメッセージ。 */
 export const VICTORY_MESSAGES: GameMessage[] = [
   {

@@ -107,3 +107,28 @@ describe('gameStore commitActions', () => {
     expect(s().pendingActions).toEqual([{ districtId: 'ato', kind: 'clean-up' }])
   })
 })
+
+describe('gameStore 節目メッセージ', () => {
+  beforeEach(() => {
+    s().reset()
+    s().startStage(sampleStage)
+  })
+
+  it('不満度が80%以上になると一度だけ節目メッセージを表示しフラグが立つ', () => {
+    const g = s().game!
+    // 活発度0で遭遇率の上昇・出没を抑え、不満度80を決定的に保つ
+    useGameStore.setState({ game: { ...g, dissatisfaction: 80, activeness: 0 } })
+    s().commitActions()
+    expect(s().game!.dissatisfaction).toBe(80)
+    expect(s().game!.milestones.highDissatisfaction).toBe(true)
+    expect(s().messages.map((m) => m.id)).toContain('milestone-high-dissatisfaction')
+  })
+
+  it('不満度が80%未満なら節目メッセージは出ない', () => {
+    const g = s().game!
+    useGameStore.setState({ game: { ...g, dissatisfaction: 0, activeness: 0 } })
+    s().commitActions()
+    expect(s().game!.milestones.highDissatisfaction).toBe(false)
+    expect(s().messages).toEqual([])
+  })
+})
