@@ -27,8 +27,9 @@ export function MessageModal() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         >
+          {/* key を付けないことで、ページ送り（次へ／戻る）では再マウントせず、
+              pop-in イージングはモーダルを開いた最初の一度だけにする。 */}
           <motion.div
-            key={current.id}
             className="w-full max-w-lg rounded-xl border border-panel-border bg-panel-light p-6 shadow-2xl"
             initial={{ scale: 0.92, y: 12 }}
             animate={{ scale: 1, y: 0 }}
