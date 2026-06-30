@@ -153,19 +153,20 @@ function Meter({
   max?: number
 }) {
   const pct = Math.min(100, (value / max) * 100)
-  const predPct =
-    predicted === undefined ? null : Math.min(100, Math.max(0, (predicted / max) * 100))
+  // 予測は「現在と表示上の差がある」ときだけ見せる（変動なしは線も数値も出さない）。
+  const showPred = predicted !== undefined && Math.round(predicted) !== Math.round(value)
+  const predPct = showPred ? Math.min(100, Math.max(0, (predicted! / max) * 100)) : null
   return (
     <div>
       <div className="mb-1 flex items-baseline justify-between text-xs">
         <span className="text-slate-400">{label}</span>
         <span className="font-bold">
           <span className={riskColor(value)}>{value.toFixed(0)}</span>
-          {predicted !== undefined && (
+          {showPred && (
             <>
               <span className="mx-1 text-slate-500">→</span>
-              <span className={riskColor(predicted)} title="来週の予測遭遇率">
-                {predicted.toFixed(0)}
+              <span className={riskColor(predicted!)} title="来週の予測遭遇率">
+                {predicted!.toFixed(0)}
               </span>
             </>
           )}
@@ -342,11 +343,6 @@ function DistrictDetail() {
                 <span className="text-xs text-slate-500">対策の効果なし</span>
               )}
             </div>
-            {game.phase === 'action' && (
-              <p className="mt-2 text-[10px] leading-snug text-slate-500">
-                ⚡電気柵は遭遇率（予測値）を下げず、出没を1回だけ防ぎます。
-              </p>
-            )}
           </div>
         </div>
       )}
