@@ -33,7 +33,7 @@ export const DEFAULT_COEFFICIENTS: ModelCoefficients = {
   // 里山率（0〜1）が分母のため、比(0〜∞)時代より分母が小さい。scale を下げて調整。
   scale: 0.05,
   breachThreshold: 50,
-  urbanBreachScale: 0.5, // 市街決壊を半減（従来は急峻すぎた）
+  urbanBreachScale: 0.35, // 市街決壊を緩和（従来=1.0は急峻すぎた）
   baseMobility: 0.2,
   waterBonus: 0.15,
   greenCorridorBonus: 0.25,
@@ -120,7 +120,7 @@ export interface UrbanRiseInput {
  *
  * 里山遭遇率が決壊係数以下なら 0（クマは里山で引き返す）。
  * 里山率が小さい都市型地区ほど分母が小さく、決壊時に乗算でバーストする。
- * urbanBreachScale で決壊の急峻さ全体を抑える（既定 0.5 ＝従来の半分の速さ）。
+ * urbanBreachScale で決壊の急峻さ全体を抑える（既定 0.35 ＝従来の約1/3の速さ）。
  */
 export function urbanRise(input: UrbanRiseInput): number {
   const coeff = input.coeff ?? DEFAULT_COEFFICIENTS

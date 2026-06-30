@@ -36,15 +36,15 @@ describe('urbanRise（市街決壊モデル）', () => {
     )
   })
 
-  it('既定係数では overflow×scale×(介入/里山率)（中心市街の半減を確認）', () => {
-    // overflow=20, scale=0.5, 介入=1, 里山率=0.42 → 20*0.5/0.42 ≈ 23.8
+  it('既定係数では overflow×scale×(介入/里山率)（旧式より明確に緩い）', () => {
+    // overflow=20, 介入=1, 里山率=0.42 → 20*scale/0.42
     const rise = urbanRise({
       district: district(0.42),
       satoyamaEncounterRate: 70,
       humanIntervention: 1,
     })
     expect(rise).toBeCloseTo((20 * DEFAULT_COEFFICIENTS.urbanBreachScale) / 0.42)
-    expect(rise).toBeLessThan(30) // 旧式(=47.6)より明確に緩い
+    expect(rise).toBeLessThan(20 / 0.42) // 旧式(scale=1=47.6)より明確に緩い
   })
 
   it('里山率が小さい都市型ほど決壊が大きい（分母効果は維持）', () => {
