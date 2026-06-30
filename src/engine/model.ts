@@ -82,7 +82,7 @@ export const defaultRiskModel: RiskModel = createRiskModel('default', DEFAULT_CO
 
   damage: { satoyama: 10, urban: 30 },
   actionEffects: {
-    mowingBlockTurns: 3,
+    mowingBlockTurns: 2,
     cleanUpSatoyamaDelta: -12,
     cleanUpUrbanFactorDelta: -0.3,
   },

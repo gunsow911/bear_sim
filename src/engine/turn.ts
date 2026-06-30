@@ -119,13 +119,16 @@ export function projectEncounterRates(
   const newSatoyama: Record<DistrictId, number> = {}
   for (const def of stage.districts) {
     const ds = game.districts[def.id]
-    // 広域草刈りが有効な間は隣接流入を遮断（時間稼ぎ）
-    const neighborRates = ds.mowingBlockTurns > 0 ? {} : prevSatoyama
+    // 広域草刈りが有効な間は流入を遮断（時間稼ぎ）。
+    // 山林→里山の直接流入(第1項)・隣接流入(第2項)の両方を止める。
+    const blocked = ds.mowingBlockTurns > 0
+    const neighborRates = blocked ? {} : prevSatoyama
     const rise = model.satoyamaRise({
       district: def,
       activeness: game.activeness,
       neighborSatoyamaRates: neighborRates,
       humanIntervention: ds.intervention.satoyama,
+      blockMountainInflux: blocked,
     })
     newSatoyama[def.id] = clamp(prevSatoyama[def.id] + rise, 0, 100)
   }

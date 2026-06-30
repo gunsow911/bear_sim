@@ -13,8 +13,8 @@ export const ACTIONS: Record<ActionKind, ActionDef> = {
     instructionPointCost: 1,
     flavor:
       '集落と山林の境界を一斉に刈り払い、見通しを確保。やぶに隠れて里へ下りる"けものみち"をしばらく断ちます。',
-    effectLabel: 'この地区への流入をしばらくせき止める',
-    duration: '約3週間',
+    effectLabel: '山林・隣接からのこの地区への流入をせき止める',
+    duration: '約2週間',
   },
   'clean-up': {
     kind: 'clean-up',

@@ -82,6 +82,11 @@ export interface SatoyamaRiseInput {
   neighborSatoyamaRates: Record<string, number>
   /** §4.3 人間の介入(里山)。負で抑制。 */
   humanIntervention: number
+  /**
+   * true のとき第1項（山林→里山の直接流入）を 0 にする。
+   * 広域草刈り（けものみち遮断）が有効な間に使う。
+   */
+  blockMountainInflux?: boolean
   coeff?: ModelCoefficients
 }
 
@@ -96,12 +101,14 @@ export interface SatoyamaRiseInput {
  */
 export function satoyamaRise(input: SatoyamaRiseInput): number {
   const coeff = input.coeff ?? DEFAULT_COEFFICIENTS
-  const { district, activeness, neighborSatoyamaRates, humanIntervention } = input
+  const { district, activeness, neighborSatoyamaRates, humanIntervention, blockMountainInflux } =
+    input
 
-  // 第1項：山林からの直接流入（山林隣接地区のみ）
-  const directInflux = district.mountainAdjacent
-    ? coeff.scale * ((activeness * district.baseDensity) / district.satoyamaRatio)
-    : 0
+  // 第1項：山林からの直接流入（山林隣接地区のみ。草刈り遮断中は 0）
+  const directInflux =
+    district.mountainAdjacent && !blockMountainInflux
+      ? coeff.scale * ((activeness * district.baseDensity) / district.satoyamaRatio)
+      : 0
 
   // 第2項：隣接地区からの侵入（移動しやすさ × 隣接の里山遭遇率の総和）に流入補正を掛ける
   let neighborInflux = 0

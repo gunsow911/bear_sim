@@ -82,6 +82,14 @@ describe('projectEncounterRates', () => {
     expect(withMow).toBeLessThan(base)
   })
 
+  it('広域草刈りは山林直接流入(第1項)も断つ（mountain地区の予測里山が下がる）', () => {
+    const game = makeGame({ satoyamaEncounterRate: 40 }, { satoyamaEncounterRate: 0 })
+    const base = projectEncounterRates(game, stage, defaultRiskModel).mt.satoyama
+    const mowed = applyAction(game, 'mt', 'mowing', defaultRiskModel)
+    const after = projectEncounterRates(mowed, stage, defaultRiskModel).mt.satoyama
+    expect(after).toBeLessThan(base)
+  })
+
   it('クリーン作戦を適用すると予測里山が下がる', () => {
     // mt の初期遭遇率を低めに設定し、clean-up の -12 介入効果が clamp に消されないようにする
     const game = makeGame({ satoyamaEncounterRate: 60 }, { satoyamaEncounterRate: 30 })

@@ -85,4 +85,26 @@ describe('satoyamaRise（隣接里山遭遇率の流入補正）', () => {
     expect(r).toBeCloseTo(0.45 * 80 * DEFAULT_COEFFICIENTS.neighborInfluxScale)
     expect(r).toBeLessThan(0.45 * 80)
   })
+
+  it('blockMountainInflux で山林→里山の直接流入(第1項)が断たれる', () => {
+    const mt = {
+      id: 'm',
+      name: 'M',
+      baseDensity: 9,
+      satoyamaRatio: 0.9,
+      mountainAdjacent: true,
+      features: [],
+      adjacencies: [],
+    }
+    const base = satoyamaRise({ district: mt, activeness: 50, neighborSatoyamaRates: {}, humanIntervention: 0 })
+    const blocked = satoyamaRise({
+      district: mt,
+      activeness: 50,
+      neighborSatoyamaRates: {},
+      humanIntervention: 0,
+      blockMountainInflux: true,
+    })
+    expect(base).toBeGreaterThan(0)
+    expect(blocked).toBe(0)
+  })
 })
