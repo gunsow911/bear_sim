@@ -54,9 +54,9 @@ function StartScreen() {
 
 function Hud() {
   const game = useGameStore((s) => s.game)
-  const reservedPoints = useGameStore((s) => s.reservedPoints)
+  // 派生値（予約合計）を直接購読し、予約の増減で確実に再レンダリングさせる。
+  const resP = useGameStore((s) => s.reservedPoints())
   if (!game) return null
-  const resP = reservedPoints()
   return (
     <header className="flex items-center justify-between gap-4 border-b border-panel-border bg-panel-light px-4 py-2">
       <div className="flex gap-6 text-sm">
@@ -90,7 +90,8 @@ function PhaseControl() {
   const advancePhase = useGameStore((s) => s.advancePhase)
   const openActionModal = useGameStore((s) => s.openActionModal)
   const commitActions = useGameStore((s) => s.commitActions)
-  const reservedPoints = useGameStore((s) => s.reservedPoints)
+  // 派生値（予約合計）を直接購読し、予約の増減で再レンダリングさせる。
+  const resP = useGameStore((s) => s.reservedPoints())
   const reset = useGameStore((s) => s.reset)
   if (!game) return null
 
@@ -106,7 +107,7 @@ function PhaseControl() {
   }
   if (game.phase === 'action') {
     // 指示を使い切っていればそのまま進行。残っていれば使い残し警告モーダルを開く。
-    const remaining = game.instructionPoints - reservedPoints()
+    const remaining = game.instructionPoints - resP
     return (
       <button
         className="rounded-lg bg-risk-warn px-5 py-1.5 font-bold text-panel transition hover:brightness-110"

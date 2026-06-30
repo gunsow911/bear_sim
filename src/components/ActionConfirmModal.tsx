@@ -10,12 +10,13 @@ import { useGameStore } from '@/store/gameStore'
 export function ActionConfirmModal() {
   const open = useGameStore((s) => s.actionModalOpen)
   const game = useGameStore((s) => s.game)
-  const reservedPoints = useGameStore((s) => s.reservedPoints)
+  // 派生値（予約合計）を直接購読し、予約の増減で再レンダリングさせる。
+  const resP = useGameStore((s) => s.reservedPoints())
   const closeActionModal = useGameStore((s) => s.closeActionModal)
   const commitActions = useGameStore((s) => s.commitActions)
 
   // 使い切らずに進もうとしている指示の残数。
-  const remaining = game ? game.instructionPoints - reservedPoints() : 0
+  const remaining = game ? game.instructionPoints - resP : 0
 
   return (
     <AnimatePresence>
