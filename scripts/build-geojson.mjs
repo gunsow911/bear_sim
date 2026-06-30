@@ -23,15 +23,16 @@ const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const INPUT = join(ROOT, 'data_raw/yamaguchi/r2kb35203.shp')
 const OUTPUT_TS = join(ROOT, 'src/data/districtsGeo.ts')
 
-// ── 地区分けルール（字名 S_NAME → districtId）。プレフィックスで判定。
-//    mapshaper の -each 式（JS）として評価される。ここを変えれば分割を調整できる。
+// ── 地区分けルール（字名 S_NAME → districtId）。上から順に評価。
 const DISTRICT_RULE = `
   /^阿東/.test(S_NAME) ? 'ato'
   : /^徳地/.test(S_NAME) ? 'tokuji'
   : /^宮野/.test(S_NAME) ? 'miyano'
+  : /^(仁保|小鯖)/.test(S_NAME) ? 'niho'
+  : /^(大内|吉敷)/.test(S_NAME) ? 'ouchi'
   : /^小郡/.test(S_NAME) ? 'ogori'
-  : /^秋穂/.test(S_NAME) ? 'akiho'
   : /^阿知須/.test(S_NAME) ? 'ajisu'
+  : /^(名田島|佐山|嘉川|陶|鋳銭司|秋穂二島|秋穂)/.test(S_NAME) ? 'nanbu'
   : 'center'
 `.replace(/\s+/g, ' ').trim()
 
@@ -39,14 +40,16 @@ const DISTRICT_NAMES = {
   ato: '阿東地区',
   tokuji: '徳地地区',
   miyano: '宮野地区',
-  center: '中心部',
+  niho: '仁保・小鯖地区',
+  ouchi: '大内・吉敷地区',
+  center: '中心市街',
   ogori: '小郡地区',
-  akiho: '秋穂地区',
+  nanbu: '南部平野地区',
   ajisu: '阿知須地区',
 }
 
-// 出力の地区並び順（凡例・リストの並びに対応）
-const ORDER = ['ato', 'tokuji', 'miyano', 'center', 'ogori', 'akiho', 'ajisu']
+// 出力の地区並び順（凡例・リストの並び＝里山→市街の勾配順）
+const ORDER = ['ato', 'tokuji', 'miyano', 'niho', 'ouchi', 'center', 'ogori', 'nanbu', 'ajisu']
 
 async function main() {
   const scratch = mkdtempSync(join(tmpdir(), 'bearsim-geo-'))
