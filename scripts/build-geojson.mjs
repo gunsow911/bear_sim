@@ -49,9 +49,9 @@ const DISTRICT_NAMES = {
   niho: '仁保・小鯖地区',
   ouchi: '大内地区',
   yoshiki: '吉敷地区',
-  center: '中心市街',
+  center: '湯田・大殿地区',
   ogori: '小郡地区',
-  nanbu: '南部平野地区',
+  nanbu: '秋穂・嘉川地区',
   ajisu: '阿知須地区',
 }
 

@@ -3,8 +3,8 @@
  *   山間(供給源): 阿東 / 徳地
  *   里山バッファ: 宮野 / 仁保・小鯖
  *   住宅縁辺  : 大内 / 吉敷
- *   市街核    : 中心市街 / 小郡
- *   沿岸後方  : 南部平野 / 阿知須
+ *   市街核    : 湯田・大殿(中心市街) / 小郡
+ *   沿岸後方  : 秋穂・嘉川(南部平野) / 阿知須
  *
  * ⚠️ baseDensity / satoyamaRatio / mountainAdjacent / features は【仮値】。
  *    実データ（YPくまっぷ・土地利用統計）由来の値に差し替え予定（docs/DATA.md）。
@@ -102,7 +102,7 @@ export const yamaguchiStage: StageDef = {
     },
     {
       id: 'center',
-      name: '中心市街',
+      name: '湯田・大殿地区',
       baseDensity: 3,
       satoyamaRatio: 0.42, // 旧山口の市街核。多地区と接するハブ
       mountainAdjacent: false,
@@ -130,7 +130,7 @@ export const yamaguchiStage: StageDef = {
     },
     {
       id: 'nanbu',
-      name: '南部平野地区',
+      name: '秋穂・嘉川地区',
       baseDensity: 3,
       satoyamaRatio: 0.55, // 干拓・沿岸平野＝後方の安全地帯
       mountainAdjacent: false,
