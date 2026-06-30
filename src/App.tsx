@@ -205,7 +205,6 @@ function DistrictDetail() {
   const selectDistrict = useGameStore((s) => s.selectDistrict)
   const pending = useGameStore((s) => s.pendingActions)
   const removeAction = useGameStore((s) => s.removeAction)
-  if (!stage || !game) return null
 
   // 予約中の施策を反映した「来週予測」（行動フェーズのみ）。commitActions と同じ前処理。
   const predicted = useMemo(() => {
@@ -214,6 +213,9 @@ function DistrictDetail() {
     for (const p of pending) g = applyAction(g, p.districtId, p.kind, activeRiskModel)
     return projectEncounterRates(g, stage, activeRiskModel)
   }, [stage, game, pending])
+
+  if (!stage || !game) return null
+
   const pred = selectedId ? predicted?.[selectedId] : undefined
 
   const districts = stage.districts
