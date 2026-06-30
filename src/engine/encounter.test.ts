@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { urbanRise, DEFAULT_COEFFICIENTS, type ModelCoefficients } from './encounter'
+import { urbanRise, satoyamaRise, DEFAULT_COEFFICIENTS, type ModelCoefficients } from './encounter'
 import type { DistrictDef } from '@/types'
 
 const district = (satoyamaRatio: number): DistrictDef => ({
@@ -51,5 +51,38 @@ describe('urbanRise（市街決壊モデル）', () => {
     const urban = urbanRise({ district: district(0.42), satoyamaEncounterRate: 80, humanIntervention: 1 })
     const rural = urbanRise({ district: district(0.9), satoyamaEncounterRate: 80, humanIntervention: 1 })
     expect(urban).toBeGreaterThan(rural)
+  })
+})
+
+describe('satoyamaRise（隣接里山遭遇率の流入補正）', () => {
+  // mountainAdjacent=false → 直接流入0。隣接(green-corridor, 遭遇率80)からの流入のみ。
+  const rise = (coeff?: ModelCoefficients) =>
+    satoyamaRise({
+      district: {
+        id: 'c',
+        name: 'C',
+        baseDensity: 3,
+        satoyamaRatio: 0.5,
+        mountainAdjacent: false,
+        features: [],
+        adjacencies: [{ to: 'n', features: ['green-corridor'] }],
+      },
+      activeness: 50,
+      neighborSatoyamaRates: { n: 80 },
+      humanIntervention: 0,
+      coeff,
+    })
+
+  it('neighborInfluxScale で隣接流入が線形に抑制される', () => {
+    const full = rise({ ...DEFAULT_COEFFICIENTS, neighborInfluxScale: 1 })
+    const half = rise({ ...DEFAULT_COEFFICIENTS, neighborInfluxScale: 0.5 })
+    expect(half).toBeCloseTo(full * 0.5)
+  })
+
+  it('既定係数では隣接流入が補正で旧式(scale=1)より緩い', () => {
+    // mobility(green-corridor)=baseMobility0.2+greenCorridor0.25=0.45、隣接80 → 0.45*80=36
+    const r = rise()
+    expect(r).toBeCloseTo(0.45 * 80 * DEFAULT_COEFFICIENTS.neighborInfluxScale)
+    expect(r).toBeLessThan(0.45 * 80)
   })
 })

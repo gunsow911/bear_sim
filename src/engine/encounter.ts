@@ -21,6 +21,12 @@ export interface ModelCoefficients {
   urbanBreachScale: number
   /** 隣接の基礎移動しやすさ。 */
   baseMobility: number
+  /**
+   * 隣接里山遭遇率からの流入に掛ける補正（0〜1）。
+   * すべての熊が隣の地区へ移動するわけではないことを表し、里山遭遇率の急騰を抑える。
+   * 1 で従来どおり、小さいほど地区間の伝播が緩やか。
+   */
+  neighborInfluxScale: number
   /** 🌊 水系接続を両地区が共有する場合の加算。 */
   waterBonus: number
   /** 🌲 グリーン回廊の加算。 */
@@ -35,6 +41,7 @@ export const DEFAULT_COEFFICIENTS: ModelCoefficients = {
   breachThreshold: 50,
   urbanBreachScale: 0.35, // 市街決壊を緩和（従来=1.0は急峻すぎた）
   baseMobility: 0.2,
+  neighborInfluxScale: 0.4, // 隣接からの里山流入を抑制（全頭が移動はしない＝急騰緩和）
   waterBonus: 0.15,
   greenCorridorBonus: 0.25,
   trunkRoadPenalty: 0.3,
@@ -80,9 +87,12 @@ export interface SatoyamaRiseInput {
 
 /**
  * §4.3 里山遭遇率の上昇度
- *   = S * {(活発度 * 生息密度) / 里山率}          … 山林隣接地区のみ
- *   + Σ(移動しやすさ * 隣接の里山遭遇率)
+ *   = S * {(活発度 * 生息密度) / 里山率}                   … 山林隣接地区のみ
+ *   + 隣接流入補正 * Σ(移動しやすさ * 隣接の里山遭遇率)
  *   + 人間の介入
+ *
+ * 第2項に neighborInfluxScale を掛け、地区間の伝播（＝里山遭遇率の急騰）を抑える。
+ * 全頭が隣へ移動するわけではない、という現実の含意も表す。
  */
 export function satoyamaRise(input: SatoyamaRiseInput): number {
   const coeff = input.coeff ?? DEFAULT_COEFFICIENTS
@@ -93,7 +103,7 @@ export function satoyamaRise(input: SatoyamaRiseInput): number {
     ? coeff.scale * ((activeness * district.baseDensity) / district.satoyamaRatio)
     : 0
 
-  // 第2項：隣接地区からの侵入（移動しやすさ × 隣接の里山遭遇率の総和）
+  // 第2項：隣接地区からの侵入（移動しやすさ × 隣接の里山遭遇率の総和）に流入補正を掛ける
   let neighborInflux = 0
   for (const adj of district.adjacencies) {
     const neighborRate = neighborSatoyamaRates[adj.to] ?? 0
@@ -101,7 +111,7 @@ export function satoyamaRise(input: SatoyamaRiseInput): number {
   }
 
   // 第3項：人間の介入
-  return directInflux + neighborInflux + humanIntervention
+  return directInflux + coeff.neighborInfluxScale * neighborInflux + humanIntervention
 }
 
 /** §4.4 市街遭遇率の上昇度を計算するための入力。 */
