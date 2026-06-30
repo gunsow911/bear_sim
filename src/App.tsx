@@ -6,7 +6,7 @@
  * 各パネルの本実装（メーター演出・議題カード・対策コマンド）は Step 5 で行う。
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ActionDetailCard } from '@/components/ActionDetailCard'
 import { AgendaCards } from '@/components/AgendaCards'
 import { EncounterReveal } from '@/components/EncounterReveal'
@@ -18,6 +18,8 @@ import { ACTION_LIST, ACTIONS } from '@/data/actions'
 import { yamaguchiStage } from '@/data/stages'
 import { useGameStore } from '@/store/gameStore'
 import { applyTheme, DEFAULT_THEME } from '@/theme/themes'
+import { applyAction, projectEncounterRates } from '@/engine/turn'
+import { activeRiskModel } from '@/engine/model'
 import type { ActionKind, DistrictFeature } from '@/types'
 
 const FEATURE_LABEL: Record<DistrictFeature, { icon: string; name: string }> = {
@@ -138,20 +140,46 @@ function riskColor(rate: number): string {
   return 'text-risk-safe'
 }
 
-/** ラベル付きのメーターバー。 */
-function Meter({ label, value, max = 100 }: { label: string; value: number; max?: number }) {
+/** ラベル付きのメーターバー。predicted 指定時は「現在 → 予測」とゴースト目盛りを表示。 */
+function Meter({
+  label,
+  value,
+  predicted,
+  max = 100,
+}: {
+  label: string
+  value: number
+  predicted?: number
+  max?: number
+}) {
   const pct = Math.min(100, (value / max) * 100)
+  const predPct =
+    predicted === undefined ? null : Math.min(100, Math.max(0, (predicted / max) * 100))
   return (
     <div>
       <div className="mb-1 flex items-baseline justify-between text-xs">
         <span className="text-slate-400">{label}</span>
-        <span className={`font-bold ${riskColor(value)}`}>{value.toFixed(0)}</span>
+        <span className="font-bold">
+          <span className={riskColor(value)}>{value.toFixed(0)}</span>
+          {predicted !== undefined && (
+            <>
+              <span className="mx-1 text-slate-500">→</span>
+              <span className={riskColor(predicted)} title="来週の予測遭遇率">
+                {predicted.toFixed(0)}
+              </span>
+            </>
+          )}
+        </span>
       </div>
-      <div className="h-2 overflow-hidden rounded bg-panel">
-        <div
-          className="h-full rounded bg-current transition-all"
-          style={{ width: `${pct}%` }}
-        />
+      <div className="relative h-2 overflow-hidden rounded bg-panel">
+        <div className="h-full rounded bg-current transition-all" style={{ width: `${pct}%` }} />
+        {predPct !== null && (
+          <div
+            className="absolute top-0 h-full w-0.5 bg-slate-200"
+            style={{ left: `calc(${predPct}% - 1px)` }}
+            title="来週の予測位置"
+          />
+        )}
       </div>
     </div>
   )
@@ -178,6 +206,15 @@ function DistrictDetail() {
   const pending = useGameStore((s) => s.pendingActions)
   const removeAction = useGameStore((s) => s.removeAction)
   if (!stage || !game) return null
+
+  // 予約中の施策を反映した「来週予測」（行動フェーズのみ）。commitActions と同じ前処理。
+  const predicted = useMemo(() => {
+    if (!stage || !game || game.phase !== 'action') return null
+    let g = game
+    for (const p of pending) g = applyAction(g, p.districtId, p.kind, activeRiskModel)
+    return projectEncounterRates(g, stage, activeRiskModel)
+  }, [stage, game, pending])
+  const pred = selectedId ? predicted?.[selectedId] : undefined
 
   const districts = stage.districts
   const idx = districts.findIndex((d) => d.id === selectedId)
@@ -281,8 +318,8 @@ function DistrictDetail() {
                 <div className="bg-slate-500" style={{ width: `${pct.urban}%` }} />
               </div>
             </div>
-            <Meter label="里山遭遇率" value={ds.satoyamaEncounterRate} />
-            <Meter label="市街遭遇率" value={ds.urbanEncounterRate} />
+            <Meter label="里山遭遇率" value={ds.satoyamaEncounterRate} predicted={pred?.satoyama} />
+            <Meter label="市街遭遇率" value={ds.urbanEncounterRate} predicted={pred?.urban} />
           </div>
 
           {/* 状態（対策の効果） */}
@@ -303,6 +340,11 @@ function DistrictDetail() {
                 <span className="text-xs text-slate-500">対策の効果なし</span>
               )}
             </div>
+            {game.phase === 'action' && (
+              <p className="mt-2 text-[10px] leading-snug text-slate-500">
+                ⚡電気柵は遭遇率（予測値）を下げず、出没を1回だけ防ぎます。
+              </p>
+            )}
           </div>
         </div>
       )}
