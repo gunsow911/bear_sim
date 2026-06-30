@@ -1,13 +1,13 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { useGameStore } from './gameStore'
-import { sampleStage } from '@/data/sampleStage'
+import { yamaguchiStage } from '@/data/stages'
 
 const s = () => useGameStore.getState()
 
 describe('gameStore 予約（pendingActions）', () => {
   beforeEach(() => {
     s().reset()
-    s().startStage(sampleStage) // turn1 → phase 'action', selected = 'ato'
+    s().startStage(yamaguchiStage) // turn1 → phase 'action', selected = 'ato'
   })
 
   it('toggleAction で選択地区に予約が追加される', () => {
@@ -70,7 +70,7 @@ describe('gameStore 予約（pendingActions）', () => {
 describe('gameStore commitActions', () => {
   beforeEach(() => {
     s().reset()
-    s().startStage(sampleStage)
+    s().startStage(yamaguchiStage)
   })
 
   it('予約を順に適用してリソースを実消費し、遭遇解決後に予約をクリアする', () => {
@@ -111,7 +111,7 @@ describe('gameStore commitActions', () => {
 describe('gameStore 節目メッセージ', () => {
   beforeEach(() => {
     s().reset()
-    s().startStage(sampleStage)
+    s().startStage(yamaguchiStage)
   })
 
   it('不満度が80%以上になると一度だけ節目メッセージを表示しフラグが立つ', () => {

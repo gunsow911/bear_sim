@@ -15,7 +15,7 @@ import { MessageModal } from '@/components/MessageModal'
 import { ActionConfirmModal } from '@/components/ActionConfirmModal'
 import { MapView } from '@/components/MapView'
 import { ACTION_LIST, ACTIONS } from '@/data/actions'
-import { sampleStage } from '@/data/sampleStage'
+import { yamaguchiStage } from '@/data/stages'
 import { useGameStore } from '@/store/gameStore'
 import { applyTheme, DEFAULT_THEME } from '@/theme/themes'
 import type { ActionKind, DistrictFeature } from '@/types'
@@ -44,9 +44,9 @@ function StartScreen() {
       </p>
       <button
         className="rounded-lg bg-risk-safe px-6 py-3 font-bold text-panel transition hover:brightness-110"
-        onClick={() => startStage(sampleStage)}
+        onClick={() => startStage(yamaguchiStage)}
       >
-        {sampleStage.name}で開始
+        {yamaguchiStage.name}で開始
       </button>
     </div>
   )

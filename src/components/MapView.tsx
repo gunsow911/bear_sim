@@ -2,7 +2,7 @@
  * 地図ビュー。react-leaflet + OpenStreetMap タイル。
  * 地区境界 GeoJSON を遭遇率で色分け（choropleth）し、クリックで地区選択する。
  *
- * 地区データは src/data/districtsGeo.ts（現状プレースホルダ）。
+ * 地区データは src/data/stages/yamaguchi/districtsGeo.ts（現状プレースホルダ）。
  * 実データへの差し替えは docs/DATA.md を参照。
  */
 
@@ -11,7 +11,7 @@ import L from 'leaflet'
 import type { LatLngBoundsExpression, Layer, PathOptions } from 'leaflet'
 import type { Feature } from 'geojson'
 import 'leaflet/dist/leaflet.css'
-import { districtsGeo } from '@/data/districtsGeo'
+import { districtsGeo } from '@/data/stages/yamaguchi/districtsGeo'
 import { useGameStore } from '@/store/gameStore'
 
 /** 全地区を含む表示範囲を GeoJSON から算出する（[ [南西lat,lng], [北東lat,lng] ]）。 */

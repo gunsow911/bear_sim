@@ -21,7 +21,7 @@ import mapshaper from 'mapshaper'
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const INPUT = join(ROOT, 'data_raw/yamaguchi/r2kb35203.shp')
-const OUTPUT_TS = join(ROOT, 'src/data/districtsGeo.ts')
+const OUTPUT_TS = join(ROOT, 'src/data/stages/yamaguchi/districtsGeo.ts')
 
 // ── 地区分けルール（字名 S_NAME → districtId）。上から順に評価。
 const DISTRICT_RULE = `
@@ -96,7 +96,7 @@ async function main() {
  * ⚠️ このファイルは scripts/build-geojson.mjs により自動生成される。手で編集しない。
  *    元データ: e-Stat 小地域（国勢調査）山口市。分割ルールはスクリプト側を参照。
  *
- * データ契約: 各 Feature.properties.districtId が sampleStage の地区 id と一致する。
+ * データ契約: 各 Feature.properties.districtId が yamaguchiStage の地区 id と一致する。
  */
 import type { FeatureCollection, MultiPolygon, Polygon } from 'geojson'
 

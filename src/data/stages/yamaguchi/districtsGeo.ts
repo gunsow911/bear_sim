@@ -3,7 +3,7 @@
  * ⚠️ このファイルは scripts/build-geojson.mjs により自動生成される。手で編集しない。
  *    元データ: e-Stat 小地域（国勢調査）山口市。分割ルールはスクリプト側を参照。
  *
- * データ契約: 各 Feature.properties.districtId が sampleStage の地区 id と一致する。
+ * データ契約: 各 Feature.properties.districtId が yamaguchiStage の地区 id と一致する。
  */
 import type { FeatureCollection, MultiPolygon, Polygon } from 'geojson'
 

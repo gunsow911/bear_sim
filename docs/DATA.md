@@ -3,22 +3,22 @@
 地図に表示する**地区境界 GeoJSON** と、数理モデル用の**地区パラメータ**をどこから取得し、
 どう加工してゲームに組み込むかをまとめる。
 
-現状は `src/data/districtsGeo.ts` に【プレースホルダ】の仮ポリゴンが入っている。
+現状は `src/data/stages/yamaguchi/districtsGeo.ts` に【プレースホルダ】の仮ポリゴンが入っている。
 下記の手順で実データに差し替えると、地図がそのまま実地図になる。
 
 ---
 
 ## 1. データ契約（この形を満たせば差し替え可能）
 
-`src/data/districtsGeo.ts` がエクスポートする GeoJSON は次を満たすこと：
+`src/data/stages/yamaguchi/districtsGeo.ts` がエクスポートする GeoJSON は次を満たすこと：
 
 - `FeatureCollection`
-- 各 `Feature.properties.districtId` が `src/data/sampleStage.ts` の地区 id と一致
+- 各 `Feature.properties.districtId` が `src/data/stages/yamaguchi/stage.ts` の地区 id と一致
   （山口市サンプルなら `tokuji` / `ato` / `miyano` / `center`）
 - 各 `Feature.properties.name` は表示名
 - `geometry` は `Polygon` または `MultiPolygon`、座標は `[経度, 緯度]`（WGS84）
 
-> パラメータ（生息密度・里山市街比など）は `sampleStage.ts` 側に持つ。GeoJSON は境界だけでよい。
+> パラメータ（生息密度・里山市街比など）は `stages/yamaguchi/stage.ts` 側に持つ。GeoJSON は境界だけでよい。
 
 ---
 
