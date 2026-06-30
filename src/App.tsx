@@ -36,20 +36,104 @@ function seasonLabel(turn: number): string {
   return `${month}月${week}週`
 }
 
+/** タイトル（アトラクト）画面のシグネチャー: 作戦司令室のレーダースコープ。
+ *  外周のブリップ＝熊の脅威、中心＝司令部の照準。スイープが連続回転する。 */
+function RadarScope() {
+  // 北(上)＝山間の供給源、中心＝市街。脅威は山から里・街へ降りてくる構図。
+  const blips = [
+    { x: 78, y: 30, hot: true, delay: '0s' }, // 山間・供給源
+    { x: 128, y: 42, hot: true, delay: '1.1s' }, // 山間・供給源
+    { x: 66, y: 78, hot: false, delay: '0.5s' }, // 里山バッファ
+    { x: 140, y: 92, hot: false, delay: '1.7s' },
+    { x: 58, y: 122, hot: false, delay: '2.2s' },
+    { x: 112, y: 132, hot: false, delay: '0.8s' },
+    { x: 150, y: 140, hot: false, delay: '2.6s' },
+    { x: 92, y: 160, hot: false, delay: '1.4s' },
+  ]
+  return (
+    <div className="attract-scope" aria-hidden="true">
+      <div className="attract-sweep" />
+      <svg className="attract-scope-svg" viewBox="0 0 200 200">
+        <circle className="attract-ring" cx="100" cy="100" r="92" />
+        <circle className="attract-ring" cx="100" cy="100" r="64" />
+        <circle className="attract-ring" cx="100" cy="100" r="34" />
+        <line className="attract-cross" x1="100" y1="8" x2="100" y2="192" />
+        <line className="attract-cross" x1="8" y1="100" x2="192" y2="100" />
+        {Array.from({ length: 24 }).map((_, i) => {
+          const a = (i / 24) * Math.PI * 2
+          const r1 = i % 6 === 0 ? 84 : 88
+          return (
+            <line
+              key={i}
+              className="attract-tick"
+              x1={100 + Math.cos(a) * r1}
+              y1={100 + Math.sin(a) * r1}
+              x2={100 + Math.cos(a) * 92}
+              y2={100 + Math.sin(a) * 92}
+            />
+          )
+        })}
+        {blips.map((b, i) => (
+          <circle
+            key={i}
+            className={`attract-blip${b.hot ? ' hot' : ''}`}
+            cx={b.x}
+            cy={b.y}
+            r={b.hot ? 3.4 : 2.6}
+            style={{ animationDelay: b.delay }}
+          />
+        ))}
+        {/* 中心 ＝ 司令部マーカー（照準レティクル） */}
+        <circle className="attract-core-pulse" cx="100" cy="100" r="8" />
+        <path className="attract-core" d="M100 90 v6 M100 104 v6 M90 100 h6 M104 100 h6" />
+        <rect className="attract-core" x="95" y="95" width="10" height="10" />
+      </svg>
+    </div>
+  )
+}
+
 function StartScreen() {
   const startStage = useGameStore((s) => s.startStage)
+  const stage = yamaguchiStage
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-6 p-8 text-center">
-      <h1 className="text-3xl font-bold tracking-wide">里山防衛対策本部</h1>
-      <p className="max-w-md text-slate-300">
-        山口県熊害対策シミュレーター。地区ごとの遭遇率を管理し、棲み分けの本質を学ぶ。
-      </p>
-      <button
-        className="rounded-lg bg-risk-safe px-6 py-3 font-bold text-panel transition hover:brightness-110"
-        onClick={() => startStage(yamaguchiStage)}
-      >
-        {yamaguchiStage.name}で開始
-      </button>
+    <div className="attract">
+      <div className="attract-frame">
+        <span /><span /><span /><span />
+      </div>
+
+      <div className="attract-status attract-mono">
+        <span>
+          <i className="attract-dot" />
+          <span className="attract-online">対策本部 オンライン</span>
+        </span>
+        <span className="attract-status-meta">
+          {stage.name} ／ {stage.districts.length} 地区
+          <span className="attract-status-warn"> ／ 熊害警戒中</span>
+        </span>
+      </div>
+
+      <div className="attract-body">
+        <div className="attract-copy">
+          <p className="attract-eyebrow attract-mono">Satoyama Defense Operations</p>
+          <h1 className="attract-title">里山防衛<br />対策本部</h1>
+          <div className="attract-rule" />
+          <p className="attract-brief">
+            山口県の<b>熊害対策シミュレーター</b>。地区ごとの遭遇率を読み、
+            限られた指示で<b>棲み分け</b>を組み立てる。秋までに、街へ降ろさない。
+          </p>
+          <button
+            className="attract-cta attract-mono"
+            onClick={() => startStage(stage)}
+          >
+            <span className="attract-cta-arrow">▶</span>
+            <span>{stage.name}で作戦開始</span>
+            <span className="attract-cta-tag">START</span>
+          </button>
+          <p className="attract-hint attract-mono">指示を出して開始</p>
+        </div>
+
+        <RadarScope />
+      </div>
     </div>
   )
 }
