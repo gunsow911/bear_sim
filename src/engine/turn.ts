@@ -93,25 +93,29 @@ export interface EncounterResult {
   events: EncounterEvent[]
 }
 
+/** 各地区の「次ターンの遭遇率（里山・市街）」。乱数・出没判定を含まない。 */
+export interface ProjectedRate {
+  satoyama: number
+  urban: number
+}
+
 /**
- * 遭遇フェーズを解決し、更新後の状態と発生イベントを返す。
- * 1) 全地区の里山遭遇率を「前ターン値」を元に同時更新（隣接流入は前ターン値を参照）
- * 2) 市街遭遇率を新しい里山遭遇率を元に更新（§4.4 決壊モデル）
- * 3) 出現判定 → 不満度加算（電気柵は里山出現を1度だけ無効化）
+ * 遭遇率の上昇だけを計算する純関数（乱数・出没判定なし）。
+ * resolveEncounterPhase の手順①里山更新（草刈り遮断考慮）／②市街決壊更新 と同一。
+ * 予測表示と確定処理の単一の真実源。
  */
-export function resolveEncounterPhase(
+export function projectEncounterRates(
   game: GameState,
   stage: StageDef,
   model: RiskModel,
-  rng: () => number = Math.random,
-): EncounterResult {
-  // 隣接流入は同時性を保つため「前ターンの里山遭遇率」を参照する
+): Record<DistrictId, ProjectedRate> {
+  // 隣接流入は同時性を保つため「前ターン（=現在）の里山遭遇率」を参照する
   const prevSatoyama: Record<DistrictId, number> = {}
   for (const d of stage.districts) {
     prevSatoyama[d.id] = game.districts[d.id].satoyamaEncounterRate
   }
 
-  // 1) 里山遭遇率の更新
+  // ① 里山遭遇率の更新
   const newSatoyama: Record<DistrictId, number> = {}
   for (const def of stage.districts) {
     const ds = game.districts[def.id]
@@ -126,11 +130,8 @@ export function resolveEncounterPhase(
     newSatoyama[def.id] = clamp(prevSatoyama[def.id] + rise, 0, 100)
   }
 
-  // 2) 市街遭遇率の更新 + 3) 出現判定
-  const events: EncounterEvent[] = []
-  const newDistricts: Record<DistrictId, DistrictState> = {}
-  let dissatisfaction = game.dissatisfaction
-
+  // ② 市街遭遇率の更新（決壊モデル、新しい里山遭遇率を使う）
+  const result: Record<DistrictId, ProjectedRate> = {}
   for (const def of stage.districts) {
     const ds = game.districts[def.id]
     const satoyama = newSatoyama[def.id]
@@ -144,6 +145,32 @@ export function resolveEncounterPhase(
       0,
       100,
     )
+    result[def.id] = { satoyama, urban }
+  }
+  return result
+}
+
+/**
+ * 遭遇フェーズを解決し、更新後の状態と発生イベントを返す。
+ * 1) projectEncounterRates で里山・市街遭遇率を確定（予測と同一計算）
+ * 2) 出現判定 → 不満度加算（電気柵は里山出現を1度だけ無効化）
+ */
+export function resolveEncounterPhase(
+  game: GameState,
+  stage: StageDef,
+  model: RiskModel,
+  rng: () => number = Math.random,
+): EncounterResult {
+  const projected = projectEncounterRates(game, stage, model)
+
+  const events: EncounterEvent[] = []
+  const newDistricts: Record<DistrictId, DistrictState> = {}
+  let dissatisfaction = game.dissatisfaction
+
+  for (const def of stage.districts) {
+    const ds = game.districts[def.id]
+    const satoyama = projected[def.id].satoyama
+    const urban = projected[def.id].urban
 
     let fenceActive = ds.electricFenceActive
 
