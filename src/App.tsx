@@ -64,9 +64,9 @@ function Hud() {
           <b>{seasonLabel(game.turn)}</b>
           <span className="ml-2 text-slate-400">あと{game.maxTurns - game.turn + 1}週</span>
         </span>
-        <span>
-          指示 <b>{game.instructionPoints}</b>
-          {resP > 0 && <span className="ml-1 text-risk-warn">(−{resP})</span>}
+        <span title="今週使える指示（残り / 今週の総数）">
+          指示 <b className={resP > 0 ? 'text-risk-warn' : ''}>{game.instructionPoints - resP}</b>
+          <span className="text-slate-400">/{game.instructionPoints}</span>
         </span>
         <span>
           不満度 <b className={game.dissatisfaction >= 70 ? 'text-risk-critical' : ''}>
@@ -89,6 +89,8 @@ function PhaseControl() {
   const game = useGameStore((s) => s.game)
   const advancePhase = useGameStore((s) => s.advancePhase)
   const openActionModal = useGameStore((s) => s.openActionModal)
+  const commitActions = useGameStore((s) => s.commitActions)
+  const reservedPoints = useGameStore((s) => s.reservedPoints)
   const reset = useGameStore((s) => s.reset)
   if (!game) return null
 
@@ -103,10 +105,12 @@ function PhaseControl() {
     )
   }
   if (game.phase === 'action') {
+    // 指示を使い切っていればそのまま進行。残っていれば使い残し警告モーダルを開く。
+    const remaining = game.instructionPoints - reservedPoints()
     return (
       <button
         className="rounded-lg bg-risk-warn px-5 py-1.5 font-bold text-panel transition hover:brightness-110"
-        onClick={openActionModal}
+        onClick={() => (remaining > 0 ? openActionModal() : commitActions())}
       >
         クマの行動へ →
       </button>
