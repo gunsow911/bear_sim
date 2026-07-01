@@ -14,6 +14,7 @@ const KIND_META: Record<EncounterEventKind, { icon: string; label: string; color
   urban: { icon: '🐻', label: '市街地に出没', color: 'text-risk-critical' },
   satoyama: { icon: '🐾', label: '里山に出没', color: 'text-risk-danger' },
   'fence-block': { icon: '🛡️', label: '電気柵で防いだ', color: 'text-risk-safe' },
+  'trap-capture': { icon: '🪤', label: '箱わなで捕獲', color: 'text-risk-safe' },
 }
 
 /** 畳んだピルはビューポート上部中央に固定。 */

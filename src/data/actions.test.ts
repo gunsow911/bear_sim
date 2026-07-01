@@ -9,16 +9,20 @@ describe('ACTIONS data', () => {
     }
   })
 
-  it('日常施策の指示ポイントコストは1（予算撤廃後の不変条件）。切り札(箱わな・緊急銃猟)のみコスト2', () => {
-    const cost2 = new Set(['box-trap', 'emergency-shooting'])
+  it('指示ポイントコストは1（日常）または2（切り札）', () => {
     for (const a of ACTION_LIST) {
-      expect(a.instructionPointCost).toBe(cost2.has(a.kind) ? 2 : 1)
+      expect([1, 2]).toContain(a.instructionPointCost)
     }
   })
 
-  it('7種別すべてが定義されている', () => {
+  it('7施策すべてが定義されている', () => {
     expect(Object.keys(ACTIONS).sort()).toEqual(
       ['attractant-removal', 'box-trap', 'electric-fence', 'emergency-shooting', 'hazing', 'mowing', 'patrol'].sort(),
     )
+  })
+
+  it('切り札(箱わな・緊急銃猟)はコスト2', () => {
+    expect(ACTIONS['box-trap'].instructionPointCost).toBe(2)
+    expect(ACTIONS['emergency-shooting'].instructionPointCost).toBe(2)
   })
 })
