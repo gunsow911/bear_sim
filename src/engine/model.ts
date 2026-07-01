@@ -1,10 +1,5 @@
 /**
  * 差し替え可能な「リスクモデル」。
- *
- * ⚠️ 数式・係数・出現確率・被害量はすべて【仮】。
- *    モデルを差し替えるには `createRiskModel(...)` に別の数値を渡すか、
- *    RiskModel インターフェースを満たす独自オブジェクトを作り、
- *    `activeRiskModel` の代入先を変えるだけでよい（エンジン側は無改修）。
  */
 
 import {
@@ -72,7 +67,7 @@ export function createRiskModel(
   }
 }
 
-/** 標準モデル（仮の数値）。 */
+/** 標準モデル */
 export const defaultRiskModel: RiskModel = createRiskModel('default', DEFAULT_COEFFICIENTS, {
   occurrenceSensitivity: 1,
   occurrenceExponent: 1.5, // 低い遭遇率の出没を抑制（>1）
