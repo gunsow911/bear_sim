@@ -1,9 +1,6 @@
 /**
  * 数理モデル（spec.md §4.3 / §4.4）の純関数群。
  * フレームワーク非依存。UI / store から独立しており、Vitest で単体テスト可能。
- *
- * ⚠️ Step 1（足場）時点では「数式の骨格」を提供する。係数のバランス調整と
- *    §4.5「囲まれた市街地」シナリオの網羅的検証は Step 2（TDD）で行う。
  */
 
 import type { Adjacency, DistrictDef, DistrictFeature } from '@/types'
@@ -27,6 +24,14 @@ export interface ModelCoefficients {
    * 1 で従来どおり、小さいほど地区間の伝播が緩やか。
    */
   neighborInfluxScale: number
+  /**
+   * 上流への逆流係数（ソフト方向バイアス、0〜1）。
+   * クマは 山林→里山→市街（＝里山率 satoyamaRatio の高い地区→低い地区）へ下る向きに
+   * 進みやすい。里山率が自地区以上の隣接（＝上流・森林側）からの流入は全量（×1）、
+   * 里山率が自地区より低い隣接（＝下流・市街側）からの逆流はこの係数だけに弱める。
+   * 1 で無方向（従来）、0 で逆流ゼロ（完全一方向）。
+   */
+  backflowScale: number
   /** 🌊 水系接続を両地区が共有する場合の加算。 */
   waterBonus: number
   /** 🌲 グリーン回廊の加算。 */
@@ -41,14 +46,17 @@ export const DEFAULT_COEFFICIENTS: ModelCoefficients = {
   breachThreshold: 50,
   urbanBreachScale: 0.35, // 市街決壊を緩和（従来=1.0は急峻すぎた）
   baseMobility: 0.2,
-  neighborInfluxScale: 0.4, // 隣接からの里山流入を抑制（全頭が移動はしない＝急騰緩和）
+  // 方向バイアス導入で逆流ぶんが減るため、対称時代(0.4)より引き上げて総流入を補償。
+  // ⚠️ 暫定値。挙動を見て要チューニング。
+  neighborInfluxScale: 0.6,
+  backflowScale: 0.2, // 上流→下流は全量、下流→上流の逆流は 0.2 に弱める（ソフト方向バイアス）
   waterBonus: 0.15,
   greenCorridorBonus: 0.25,
   trunkRoadPenalty: 0.3,
 }
 
 /**
- * §4.2-③ 隣接境界の「移動しやすさ」係数を地区特徴から算出する。
+ * 隣接境界の「移動しやすさ」係数を地区特徴から算出する。
  * green-corridor / water で増幅、trunk-road で減衰。下限 0。
  */
 export function computeMobility(
@@ -80,6 +88,11 @@ export interface SatoyamaRiseInput {
   activeness: number
   /** 隣接地区の「現在の里山遭遇率」を id 引きできるマップ。 */
   neighborSatoyamaRates: Record<string, number>
+  /**
+   * 隣接地区の里山率(satoyamaRatio)を id 引きできるマップ。ソフト方向バイアスに使う。
+   * 省略時は方向バイアスなし（全隣接を全量流入＝従来挙動）。
+   */
+  neighborSatoyamaRatios?: Record<string, number>
   /** §4.3 人間の介入(里山)。負で抑制。 */
   humanIntervention: number
   /**
@@ -98,11 +111,19 @@ export interface SatoyamaRiseInput {
  *
  * 第2項に neighborInfluxScale を掛け、地区間の伝播（＝里山遭遇率の急騰）を抑える。
  * 全頭が隣へ移動するわけではない、という現実の含意も表す。
+ * さらにソフト方向バイアス（backflowScale）で、山林→里山→市街（里山率の高い→低い）方向の
+ * 流入を全量、逆向き（下流→上流）の逆流を弱める。
  */
 export function satoyamaRise(input: SatoyamaRiseInput): number {
   const coeff = input.coeff ?? DEFAULT_COEFFICIENTS
-  const { district, activeness, neighborSatoyamaRates, humanIntervention, blockMountainInflux } =
-    input
+  const {
+    district,
+    activeness,
+    neighborSatoyamaRates,
+    neighborSatoyamaRatios,
+    humanIntervention,
+    blockMountainInflux,
+  } = input
 
   // 第1項：山林からの直接流入（山林隣接地区のみ。草刈り遮断中は 0）
   const directInflux =
@@ -110,11 +131,17 @@ export function satoyamaRise(input: SatoyamaRiseInput): number {
       ? coeff.scale * ((activeness * district.baseDensity) / district.satoyamaRatio)
       : 0
 
-  // 第2項：隣接地区からの侵入（移動しやすさ × 隣接の里山遭遇率の総和）に流入補正を掛ける
+  // 第2項：隣接地区からの侵入（移動しやすさ × 隣接の里山遭遇率の総和）に流入補正を掛ける。
+  // ソフト方向バイアス：上流(里山率≧自地区)は全量、下流(里山率<自地区)からの逆流は backflowScale 倍。
   let neighborInflux = 0
   for (const adj of district.adjacencies) {
     const neighborRate = neighborSatoyamaRates[adj.to] ?? 0
-    neighborInflux += computeMobility(adj, coeff) * neighborRate
+    const neighborRatio = neighborSatoyamaRatios?.[adj.to]
+    const direction =
+      neighborRatio === undefined || neighborRatio >= district.satoyamaRatio
+        ? 1
+        : coeff.backflowScale
+    neighborInflux += computeMobility(adj, coeff) * neighborRate * direction
   }
 
   // 第3項：人間の介入

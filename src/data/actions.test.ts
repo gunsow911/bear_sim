@@ -15,9 +15,9 @@ describe('ACTIONS data', () => {
     }
   })
 
-  it('3種別すべてが定義されている', () => {
+  it('2種別すべてが定義されている', () => {
     expect(Object.keys(ACTIONS).sort()).toEqual(
-      ['clean-up', 'electric-fence', 'mowing'].sort(),
+      ['electric-fence', 'mowing'].sort(),
     )
   })
 })

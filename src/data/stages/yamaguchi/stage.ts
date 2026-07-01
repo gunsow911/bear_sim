@@ -6,8 +6,9 @@
  *   市街核    : 湯田・大殿(中心市街) / 小郡
  *   沿岸後方  : 秋穂・嘉川(南部平野) / 阿知須
  *
- * ⚠️ baseDensity / satoyamaRatio / mountainAdjacent / features は【仮値】。
- *    実データ（YPくまっぷ・土地利用統計）由来の値に差し替え予定（docs/DATA.md）。
+ * baseDensity は YPくまっぷ（山口県クマ目撃情報）実測由来＝地区別目撃総数を最大9に
+ *    スケールした空間シグナル（月非依存）。算出は scripts/build-bear-data.mjs / docs/DATA.md。
+ * ⚠️ satoyamaRatio / mountainAdjacent / features は【仮値】。実データ差し替え予定。
  *    境界 GeoJSON とは districtId で対応する。
  *    隣接(adjacencies)は生成ジオメトリの実接触（境界最短距離<150m）から作成。
  *    features ラベル(water/green-corridor/trunk-road)は地形に基づき付与。
@@ -23,7 +24,7 @@ export const yamaguchiStage: StageDef = {
     {
       id: 'ato',
       name: '阿東地区',
-      baseDensity: 9,
+      baseDensity: 7.2,
       satoyamaRatio: 0.92, // 北部山間・供給源
       mountainAdjacent: true,
       features: ['green-corridor'],
@@ -48,7 +49,7 @@ export const yamaguchiStage: StageDef = {
     {
       id: 'miyano',
       name: '宮野地区',
-      baseDensity: 6,
+      baseDensity: 0.33,
       satoyamaRatio: 0.78, // 北の里山バッファ
       mountainAdjacent: true,
       features: ['water'],
@@ -62,7 +63,7 @@ export const yamaguchiStage: StageDef = {
     {
       id: 'niho',
       name: '仁保・小鯖地区',
-      baseDensity: 7,
+      baseDensity: 0.82,
       satoyamaRatio: 0.82, // 北東里山・熊回廊
       mountainAdjacent: true,
       features: ['green-corridor', 'water'],
@@ -77,7 +78,7 @@ export const yamaguchiStage: StageDef = {
     {
       id: 'ouchi',
       name: '大内地区',
-      baseDensity: 5,
+      baseDensity: 0.33,
       satoyamaRatio: 0.62, // 北東の住宅・里山縁辺＝侵入の接点
       mountainAdjacent: true,
       features: ['green-corridor', 'trunk-road'],
@@ -91,7 +92,7 @@ export const yamaguchiStage: StageDef = {
     {
       id: 'yoshiki',
       name: '吉敷地区',
-      baseDensity: 4,
+      baseDensity: 1.15,
       satoyamaRatio: 0.58, // 西の住宅・里山縁辺
       mountainAdjacent: true,
       features: ['green-corridor'],
@@ -103,7 +104,7 @@ export const yamaguchiStage: StageDef = {
     {
       id: 'center',
       name: '湯田・大殿地区',
-      baseDensity: 3,
+      baseDensity: 0.98,
       satoyamaRatio: 0.42, // 旧山口の市街核。多地区と接するハブ
       mountainAdjacent: false,
       features: ['water', 'trunk-road'],
@@ -118,7 +119,7 @@ export const yamaguchiStage: StageDef = {
     {
       id: 'ogori',
       name: '小郡地区',
-      baseDensity: 2,
+      baseDensity: 1.31,
       satoyamaRatio: 0.4, // 新山口駅の交通市街
       mountainAdjacent: false,
       features: ['trunk-road'],
@@ -131,7 +132,7 @@ export const yamaguchiStage: StageDef = {
     {
       id: 'nanbu',
       name: '秋穂・嘉川地区',
-      baseDensity: 3,
+      baseDensity: 2.45,
       satoyamaRatio: 0.55, // 干拓・沿岸平野＝後方の安全地帯
       mountainAdjacent: false,
       features: ['water'],
@@ -146,7 +147,7 @@ export const yamaguchiStage: StageDef = {
     {
       id: 'ajisu',
       name: '阿知須地区',
-      baseDensity: 3,
+      baseDensity: 0.0,
       satoyamaRatio: 0.57, // 南西沿岸
       mountainAdjacent: false,
       features: ['water'],

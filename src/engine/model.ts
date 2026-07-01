@@ -16,7 +16,7 @@ import {
   type UrbanRiseInput,
 } from './encounter'
 
-/** 数式以外の数理パラメータ（出現・被害・対策効果・放置増）。すべて仮。 */
+/** 数式以外の数理パラメータ（出現・被害・対策効果）。すべて仮。 */
 export interface RiskModelParams {
   /** 出現確率の基礎係数（遭遇率/100 に掛ける）。 */
   occurrenceSensitivity: number
@@ -33,13 +33,7 @@ export interface RiskModelParams {
   actionEffects: {
     /** 広域草刈り：流入を遮断するターン数。 */
     mowingBlockTurns: number
-    /** クリーン作戦：人間の介入(里山)への加算（永続・負で抑制）。 */
-    cleanUpSatoyamaDelta: number
-    /** クリーン作戦：人間の介入(市街)係数への加算（負で抑制）。 */
-    cleanUpUrbanFactorDelta: number
   }
-  /** 放置時の自然増（毎ターン intervention に加算）。 */
-  neglectDrift: { satoyama: number; urban: number }
 }
 
 /** ゲームエンジンが依存する数理モデルの境界面。 */
@@ -83,10 +77,7 @@ export const defaultRiskModel: RiskModel = createRiskModel('default', DEFAULT_CO
   damage: { satoyama: 10, urban: 30 },
   actionEffects: {
     mowingBlockTurns: 2,
-    cleanUpSatoyamaDelta: -12,
-    cleanUpUrbanFactorDelta: -0.3,
   },
-  neglectDrift: { satoyama: 1, urban: 0.02 },
 })
 
 /**

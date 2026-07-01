@@ -74,8 +74,9 @@ export interface DistrictState {
   /** §4.4 市街遭遇率（0〜100 を想定）。 */
   urbanEncounterRate: number
   /**
-   * §4.3/§4.4 人間の介入値。負で遭遇率を抑制、放置で増加。
-   * 里山側・市街側で別管理する。
+   * §4.3/§4.4 人間の介入値。負で遭遇率を抑制する上昇式の項。
+   * 里山側（加算項）・市街側（乗算係数）で別管理する。
+   * 現在は駆動源(施策・ドリフト)を外し、初期値(satoyama=0 / urban=1)で保留＝中立。
    */
   intervention: {
     satoyama: number
@@ -174,7 +175,6 @@ export interface GameMessage {
 /** §5.2 対策コマンドの種別。 */
 export type ActionKind =
   | 'mowing' // 広域草刈り（数ターン流入遮断）
-  | 'clean-up' // クリーン作戦（永続減少）
   | 'electric-fence' // 電気柵（里山遭遇を1度無効化）
 
 /** §5.2 対策コマンドの定義。 */

@@ -15,15 +15,6 @@ export const ACTIONS: Record<ActionKind, ActionDef> = {
       '集落と山林の境界を一斉に刈り払い、見通しを確保。やぶに隠れて里へ下りる"けものみち"をしばらく断ちます。',
     effectLabel: '山林・隣接からのこの地区への流入をせき止める',
   },
-  'clean-up': {
-    kind: 'clean-up',
-    name: 'クリーン作戦',
-    instructionPointCost: 1,
-    flavor:
-      '放置果樹や生ゴミ（誘引物）を地域ぐるみで一掃。里へ下りてくる動機そのものを恒久的にそぎます。',
-    effectLabel: 'この地区の出没しやすさを永続的に下げる',
-    realTerms: ['誘引物'],
-  },
   'electric-fence': {
     kind: 'electric-fence',
     name: '電気柵の設置',

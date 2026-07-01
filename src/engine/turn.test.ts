@@ -90,12 +90,15 @@ describe('projectEncounterRates', () => {
     expect(after).toBeLessThan(base)
   })
 
-  it('クリーン作戦を適用すると予測里山が下がる', () => {
-    // mt の初期遭遇率を低めに設定し、clean-up の -12 介入効果が clamp に消されないようにする
-    const game = makeGame({ satoyamaEncounterRate: 60 }, { satoyamaEncounterRate: 30 })
-    const base = projectEncounterRates(game, stage, defaultRiskModel).mt.satoyama
-    const cleaned = applyAction(game, 'mt', 'clean-up', defaultRiskModel)
-    const after = projectEncounterRates(cleaned, stage, defaultRiskModel).mt.satoyama
-    expect(after).toBeLessThan(base)
+  it('介入項は毎ターン変化しない（放置ドリフト廃止・保留中）', () => {
+    // 出没なし(rng=()=>1)で1ターン解決しても intervention は初期値のまま。
+    const game = makeGame(
+      { satoyamaEncounterRate: 20 },
+      { satoyamaEncounterRate: 20 },
+    )
+    const after = resolveEncounterPhase(game, stage, defaultRiskModel, () => 1).game
+    for (const id of ['mt', 'city'] as const) {
+      expect(after.districts[id].intervention).toEqual({ satoyama: 0, urban: 1 })
+    }
   })
 })

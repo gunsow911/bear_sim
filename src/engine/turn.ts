@@ -51,15 +51,6 @@ export function applyAction(
     case 'mowing':
       next = { ...ds, mowingBlockTurns: fx.mowingBlockTurns }
       break
-    case 'clean-up':
-      next = {
-        ...ds,
-        intervention: {
-          satoyama: ds.intervention.satoyama + fx.cleanUpSatoyamaDelta,
-          urban: Math.max(0, ds.intervention.urban + fx.cleanUpUrbanFactorDelta),
-        },
-      }
-      break
     case 'electric-fence':
       next = { ...ds, electricFenceActive: true }
       break
@@ -111,8 +102,11 @@ export function projectEncounterRates(
 ): Record<DistrictId, ProjectedRate> {
   // 隣接流入は同時性を保つため「前ターン（=現在）の里山遭遇率」を参照する
   const prevSatoyama: Record<DistrictId, number> = {}
+  // ソフト方向バイアス用：地区の里山率（静的）を id 引きできるマップ
+  const satoyamaRatios: Record<DistrictId, number> = {}
   for (const d of stage.districts) {
     prevSatoyama[d.id] = game.districts[d.id].satoyamaEncounterRate
+    satoyamaRatios[d.id] = d.satoyamaRatio
   }
 
   // ① 里山遭遇率の更新
@@ -127,6 +121,7 @@ export function projectEncounterRates(
       district: def,
       activeness: game.activeness,
       neighborSatoyamaRates: neighborRates,
+      neighborSatoyamaRatios: satoyamaRatios,
       humanIntervention: ds.intervention.satoyama,
       blockMountainInflux: blocked,
     })
@@ -225,11 +220,7 @@ export function resolveEncounterPhase(
       mowingBlockTurns: Math.max(0, ds.mowingBlockTurns - 1),
       pendingDecaySatoyama: satoyamaHit,
       pendingDecayUrban: urbanHit,
-      // 放置時の自然増（対策で打ち消されていなければじわじわ上がる）
-      intervention: {
-        satoyama: ds.intervention.satoyama + model.params.neglectDrift.satoyama,
-        urban: Math.max(0, ds.intervention.urban + model.params.neglectDrift.urban),
-      },
+      // 介入項は保留中（駆動源なし）。初期値のまま引き継ぐ。
     }
   }
 

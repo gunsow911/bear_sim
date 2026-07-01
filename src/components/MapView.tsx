@@ -13,6 +13,7 @@ import type { Feature } from 'geojson'
 import 'leaflet/dist/leaflet.css'
 import { districtsGeo } from '@/data/stages/yamaguchi/districtsGeo'
 import { useGameStore } from '@/store/gameStore'
+import { SightingHeatLayer } from './SightingHeatLayer'
 
 /** 全地区を含む表示範囲を GeoJSON から算出する（[ [南西lat,lng], [北東lat,lng] ]）。 */
 function computeBounds(): LatLngBoundsExpression {
@@ -48,8 +49,8 @@ function cssVar(name: string): string {
   return v ? `rgb(${v})` : '#888888'
 }
 
-/** 遭遇率(0-100) → 塗り色（テーマの警戒色）。詳細パネルの閾値と揃える。 */
-function riskFill(rate: number): string {
+/** 遭遇率(0-100) → 警戒色（テーマ）。詳細パネルの閾値と揃える。枠線・塗りの両方に使う。 */
+function riskColor(rate: number): string {
   if (rate >= 75) return cssVar('--color-risk-critical')
   if (rate >= 50) return cssVar('--color-risk-danger')
   if (rate >= 25) return cssVar('--color-risk-warn')
@@ -78,11 +79,13 @@ export function MapView() {
     // 里山・市街の高い方をリスクとして色付け
     const rate = ds ? Math.max(ds.satoyamaEncounterRate, ds.urbanEncounterRate) : 0
     const selected = id === selectedId
+    // 遭遇率は「枠線の色」で表現し、塗りはほぼ透明にして背景のヒートマップを透けさせる。
+    // 選択地区は白枠＋やや太く＋薄いリスク塗りで見分ける。
     return {
-      color: selected ? cssVar('--color-fg') : cssVar('--color-panel-border'),
-      weight: selected ? 4 : 1.5,
-      fillColor: riskFill(rate),
-      fillOpacity: 0.55,
+      color: selected ? cssVar('--color-fg') : riskColor(rate),
+      weight: selected ? 5 : 3,
+      fillColor: riskColor(rate),
+      fillOpacity: selected ? 0.4 : 0.18,
     }
   }
 
@@ -135,6 +138,7 @@ export function MapView() {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
+      {game && <SightingHeatLayer turn={game.turn} maxTurns={game.maxTurns} />}
       <GeoJSON key={styleKey} data={districtsGeo} style={style} onEachFeature={onEachFeature} />
       {[...sightedIds].map((id) => {
         const c = centroidOf(id)

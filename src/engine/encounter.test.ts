@@ -86,6 +86,37 @@ describe('satoyamaRise（隣接里山遭遇率の流入補正）', () => {
     expect(r).toBeLessThan(0.45 * 80)
   })
 
+  it('ソフト方向バイアス：下流(市街)は上流(森林)から全量流入、逆流は backflowScale 倍', () => {
+    const coeff = DEFAULT_COEFFICIENTS
+    const edge = (id: string): DistrictDef['adjacencies'] => [{ to: id, features: ['green-corridor'] }]
+    // 市街(里山率0.4)が森林隣接(0.9, 遭遇率80)から受ける流入＝下り方向で全量
+    const urbanFromForest = satoyamaRise({
+      district: { id: 'u', name: 'U', baseDensity: 3, satoyamaRatio: 0.4, mountainAdjacent: false, features: [], adjacencies: edge('f') },
+      activeness: 50,
+      neighborSatoyamaRates: { f: 80 },
+      neighborSatoyamaRatios: { f: 0.9 },
+      humanIntervention: 0,
+    })
+    // 森林(0.9)が市街隣接(0.4, 遭遇率80)から受ける逆流＝上り方向で弱まる
+    const forestFromUrban = satoyamaRise({
+      district: { id: 'f', name: 'F', baseDensity: 3, satoyamaRatio: 0.9, mountainAdjacent: false, features: [], adjacencies: edge('u') },
+      activeness: 50,
+      neighborSatoyamaRates: { u: 80 },
+      neighborSatoyamaRatios: { u: 0.4 },
+      humanIntervention: 0,
+    })
+    expect(urbanFromForest).toBeGreaterThan(forestFromUrban)
+    expect(forestFromUrban).toBeCloseTo(urbanFromForest * coeff.backflowScale)
+  })
+
+  it('neighborSatoyamaRatios 省略時は方向バイアスなし（全量流入）', () => {
+    const base: DistrictDef = { id: 'c', name: 'C', baseDensity: 3, satoyamaRatio: 0.5, mountainAdjacent: false, features: [], adjacencies: [{ to: 'n', features: ['green-corridor'] }] }
+    const withoutRatios = satoyamaRise({ district: base, activeness: 50, neighborSatoyamaRates: { n: 80 }, humanIntervention: 0 })
+    // 下流(0.4)からの逆流でも、ratios を渡さなければ全量（＝上流0.6と同値）
+    const asUpstream = satoyamaRise({ district: base, activeness: 50, neighborSatoyamaRates: { n: 80 }, neighborSatoyamaRatios: { n: 0.6 }, humanIntervention: 0 })
+    expect(withoutRatios).toBeCloseTo(asUpstream)
+  })
+
   it('blockMountainInflux で山林→里山の直接流入(第1項)が断たれる', () => {
     const mt = {
       id: 'm',

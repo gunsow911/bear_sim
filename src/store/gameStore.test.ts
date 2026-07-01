@@ -11,17 +11,17 @@ describe('gameStore 予約（pendingActions）', () => {
   })
 
   it('toggleAction で選択地区に予約が追加される', () => {
-    s().toggleAction('clean-up')
-    expect(s().pendingActions).toEqual([{ districtId: 'ato', kind: 'clean-up' }])
+    s().toggleAction('electric-fence')
+    expect(s().pendingActions).toEqual([{ districtId: 'ato', kind: 'electric-fence' }])
     expect(s().reservedPoints()).toBe(1)
-    expect(s().isStaged('ato', 'clean-up')).toBe(true)
+    expect(s().isStaged('ato', 'electric-fence')).toBe(true)
   })
 
   it('同じ施策を再 toggle すると予約が外れる（冪等トグル）', () => {
-    s().toggleAction('clean-up')
-    s().toggleAction('clean-up')
+    s().toggleAction('electric-fence')
+    s().toggleAction('electric-fence')
     expect(s().pendingActions).toEqual([])
-    expect(s().isStaged('ato', 'clean-up')).toBe(false)
+    expect(s().isStaged('ato', 'electric-fence')).toBe(false)
   })
 
   it('別地区には同種別を別々に予約できる', () => {
@@ -63,7 +63,7 @@ describe('gameStore 予約（pendingActions）', () => {
     s().selectDistrict('ato')
     expect(s().canStage('mowing')).toBe(true)
     // 未予約の種別は残指示P0で false
-    expect(s().canStage('clean-up')).toBe(false)
+    expect(s().canStage('electric-fence')).toBe(false)
   })
 })
 
@@ -75,7 +75,7 @@ describe('gameStore commitActions', () => {
 
   it('予約を順に適用してリソースを実消費し、遭遇解決後に予約をクリアする', () => {
     s().selectDistrict('ato')
-    s().toggleAction('clean-up') // 指示P1
+    s().toggleAction('electric-fence') // 指示P1
     s().selectDistrict('tokuji')
     s().toggleAction('electric-fence') // 指示P1
 
@@ -101,10 +101,10 @@ describe('gameStore commitActions', () => {
   })
 
   it('closeActionModal は予約・リソースを変えない（戻る相当）', () => {
-    s().toggleAction('clean-up')
+    s().toggleAction('electric-fence')
     s().openActionModal()
     s().closeActionModal()
-    expect(s().pendingActions).toEqual([{ districtId: 'ato', kind: 'clean-up' }])
+    expect(s().pendingActions).toEqual([{ districtId: 'ato', kind: 'electric-fence' }])
   })
 })
 

@@ -49,11 +49,11 @@ describe('yamaguchiStage（10地区ステージ定義）', () => {
     expect(seen.size).toBe(ids.length)
   })
 
-  it('satoyamaRatio は 0〜1、baseDensity は正', () => {
+  it('satoyamaRatio は 0〜1、baseDensity は非負（YPくまっぷ実測由来。目撃0の地区は0）', () => {
     for (const d of yamaguchiStage.districts) {
       expect(d.satoyamaRatio).toBeGreaterThan(0)
       expect(d.satoyamaRatio).toBeLessThanOrEqual(1)
-      expect(d.baseDensity).toBeGreaterThan(0)
+      expect(d.baseDensity).toBeGreaterThanOrEqual(0)
     }
   })
 })
