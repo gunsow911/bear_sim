@@ -32,6 +32,15 @@ export const ACTIONS: Record<ActionKind, ActionDef> = {
     effectLabel: 'この地区の里山・市街の出没圧をしばらく抑え続ける',
     realTerms: ['誘引物除去'],
   },
+  'box-trap': {
+    kind: 'box-trap',
+    name: '箱わなによる捕獲',
+    instructionPointCost: 2,
+    flavor:
+      '排除地域に箱わなを仕掛け、里へ通う個体を待ち受けます。かかれば人里に出る前に捕らえられ、以後その地区に降りてくる圧そのものが和らぎます。ただし人手と手間がかかります。',
+    effectLabel: 'この地区に来た個体を捕らえ、以後の里山の出没圧を和らげる（人手が要る）',
+    realTerms: ['個体数管理'],
+  },
 }
 
 export const ACTION_LIST: ActionDef[] = Object.values(ACTIONS)

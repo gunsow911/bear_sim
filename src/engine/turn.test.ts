@@ -124,6 +124,38 @@ describe('projectEncounterRates', () => {
   })
 })
 
+describe('箱わなによる捕獲', () => {
+  it('待ち伏せ中に里山出没が起きると捕獲に置換され、不満は増えず forestInfluxFactor が下がる', () => {
+    const game = applyAction(makeGame({ satoyamaEncounterRate: 90 }, {}), 'mt', 'box-trap', defaultRiskModel)
+    expect(game.districts.mt.trapTurns).toBe(defaultRiskModel.params.actionEffects.trapTurns)
+    // mt の里山ロールだけ必ず出没させ、残り（mt市街／隣接流入で押し上がる city 各ロール）は出没させない。
+    // rng は districts の順に satoyamaHit→urbanHit で呼ばれる（mt→city）。
+    let call = 0
+    const rng = () => (call++ === 0 ? 0 : 1)
+    const r = resolveEncounterPhase(game, stage, defaultRiskModel, rng)
+    expect(r.events.some((e) => e.districtId === 'mt' && e.kind === 'trap-capture')).toBe(true)
+    expect(r.game.dissatisfaction).toBe(0)
+    expect(r.game.districts.mt.trapTurns).toBe(0) // 捕獲で消費
+    expect(r.game.districts.mt.forestInfluxFactor).toBeCloseTo(0.7)
+  })
+
+  it('同地区で箱わなと電気柵が有効なら箱わなが優先し、電気柵は温存される', () => {
+    let g = applyAction(makeGame({ satoyamaEncounterRate: 90 }, {}), 'mt', 'box-trap', defaultRiskModel)
+    g = applyAction(g, 'mt', 'electric-fence', defaultRiskModel)
+    const r = resolveEncounterPhase(g, stage, defaultRiskModel, () => 0)
+    expect(r.events.some((e) => e.districtId === 'mt' && e.kind === 'trap-capture')).toBe(true)
+    expect(r.events.some((e) => e.districtId === 'mt' && e.kind === 'fence-block')).toBe(false)
+    expect(r.game.districts.mt.electricFenceTurns).toBe(3) // 温存（4→未消費で毎ターン減=3）
+  })
+
+  it('forestInfluxFactor は下限でクランプされる', () => {
+    let g = makeGame({ satoyamaEncounterRate: 90, forestInfluxFactor: 0.35 }, {})
+    g = applyAction(g, 'mt', 'box-trap', defaultRiskModel)
+    const r = resolveEncounterPhase(g, stage, defaultRiskModel, () => 0)
+    expect(r.game.districts.mt.forestInfluxFactor).toBeCloseTo(0.3) // 0.35×0.7=0.245 → 下限0.3
+  })
+})
+
 describe('誘引物の除去', () => {
   it('里山・市街の予測上昇を下げ、N ターンで中立へ戻る', () => {
     const game = makeGame({ satoyamaEncounterRate: 50 }, { satoyamaEncounterRate: 40, urbanEncounterRate: 40 })

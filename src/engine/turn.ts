@@ -64,6 +64,9 @@ export function applyAction(
         interventionTurns: fx.attractantInterventionTurns,
       }
       break
+    case 'box-trap':
+      next = { ...ds, trapTurns: fx.trapTurns }
+      break
   }
 
   return {
@@ -77,7 +80,7 @@ export function applyAction(
 // §5.3 遭遇フェーズ
 // ───────────────────────────────────────────────────────────
 
-export type EncounterEventKind = 'satoyama' | 'urban' | 'fence-block'
+export type EncounterEventKind = 'satoyama' | 'urban' | 'fence-block' | 'trap-capture'
 
 export interface EncounterEvent {
   districtId: DistrictId
@@ -134,6 +137,7 @@ export function projectEncounterRates(
       humanIntervention: ds.intervention.satoyama,
       mountainInfluxFactor: influxFactor,
       neighborInfluxFactor: influxFactor,
+      forestInfluxFactor: ds.forestInfluxFactor,
     })
     newSatoyama[def.id] = clamp(prevSatoyama[def.id] + rise, 0, 100)
   }
@@ -182,6 +186,8 @@ export function resolveEncounterPhase(
 
     const fenceActive = ds.electricFenceTurns > 0
     let fenceConsumed = false
+    const trapActive = ds.trapTurns > 0
+    let trapConsumed = false
 
     const nextInterventionTurns = Math.max(0, ds.interventionTurns - 1)
     const interventionActive = nextInterventionTurns > 0
@@ -190,9 +196,18 @@ export function resolveEncounterPhase(
     const satoyamaHit = rng() < model.occurrenceProbability(satoyama)
     const urbanHit = rng() < model.occurrenceProbability(urban)
 
-    // 里山出現
+    // 里山出現（箱わなが電気柵より優先。捕獲成立なら電気柵は消費しない）
     if (satoyamaHit) {
-      if (fenceActive) {
+      if (trapActive) {
+        trapConsumed = true // 箱わな優先：捕獲。電気柵は温存
+        events.push({
+          districtId: def.id,
+          kind: 'trap-capture',
+          message: `${def.name}：箱わなで捕獲（人里に出る前に確保）`,
+          dissatisfactionDelta: 0,
+          rate: satoyama,
+        })
+      } else if (fenceActive) {
         fenceConsumed = true // §5.2-3 電気柵が1度だけ無効化。発揮したら即失効
         events.push({
           districtId: def.id,
@@ -239,6 +254,12 @@ export function resolveEncounterPhase(
       // 誘引物の除去：残ターンを消費し、0になったら中立(0,0)へ戻す。
       interventionTurns: nextInterventionTurns,
       intervention: nextIntervention,
+      // 箱わな：捕獲成立で即0（消費）。未発揮なら毎ターン減る。
+      trapTurns: trapConsumed ? 0 : Math.max(0, ds.trapTurns - 1),
+      // 捕獲成立で山林直接流入(第1項)の恒久係数を下限クランプしつつ下げる。
+      forestInfluxFactor: trapConsumed
+        ? Math.max(model.params.actionEffects.trapForestFloor, ds.forestInfluxFactor * model.params.actionEffects.trapForestFactor)
+        : ds.forestInfluxFactor,
     }
   }
 
