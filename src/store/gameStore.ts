@@ -10,6 +10,7 @@ import { activeRiskModel } from '@/engine/model'
 import {
   applyAction as applyActionEngine,
   applySightingDecay,
+  canActivateAction,
   resolveEncounterPhase,
   type EncounterEvent,
 } from '@/engine/turn'
@@ -248,6 +249,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (!game || game.phase !== 'action' || !selectedDistrictId) return false
     // 既に当該地区へ予約済みなら、OFF にできるよう常に許可
     if (get().isStaged(selectedDistrictId, kind)) return true
+    if (!canActivateAction(game, selectedDistrictId, kind, activeRiskModel)) return false
     const a = ACTIONS[kind]
     const pointsLeft = game.instructionPoints - get().reservedPoints()
     return pointsLeft >= a.instructionPointCost

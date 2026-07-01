@@ -41,6 +41,15 @@ export const ACTIONS: Record<ActionKind, ActionDef> = {
     effectLabel: 'この地区に来た個体を捕らえ、以後の里山の出没圧を和らげる（人手が要る）',
     realTerms: ['個体数管理'],
   },
+  'emergency-shooting': {
+    kind: 'emergency-shooting',
+    name: '緊急銃猟',
+    instructionPointCost: 2,
+    flavor:
+      '市街地に居座る個体へ、市町の判断で緊急の銃猟を実施します。決壊した市街の危険を即座に断ち切りますが、発砲は住民を動揺させ、事故の恐れもあります。',
+    effectLabel: '市街に出た個体を緊急排除する（住民は動揺する）',
+    realTerms: ['緊急銃猟'],
+  },
 }
 
 export const ACTION_LIST: ActionDef[] = Object.values(ACTIONS)

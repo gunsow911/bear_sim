@@ -30,8 +30,26 @@ export function canAfford(game: GameState, kind: ActionKind): boolean {
 }
 
 /**
+ * 施策の地区固有の発動条件を満たすか（指示ポイントの余力は canAfford が別途判定）。
+ * 緊急銃猟は市街遭遇率が閾値以上のときのみ発動可。他施策は常に true。
+ */
+export function canActivateAction(
+  game: GameState,
+  districtId: DistrictId,
+  kind: ActionKind,
+  model: RiskModel,
+): boolean {
+  const ds = game.districts[districtId]
+  if (!ds) return false
+  if (kind === 'emergency-shooting') {
+    return ds.urbanEncounterRate >= model.params.actionEffects.emergencyUrbanThreshold
+  }
+  return true
+}
+
+/**
  * 対策コマンドを1つ適用した新しいゲーム状態を返す。
- * リソース不足・地区不在の場合は状態を変えずに返す（呼び出し側で canAfford を確認推奨）。
+ * リソース不足・地区不在・発動条件未達の場合は状態を変えずに返す（呼び出し側で canAfford を確認推奨）。
  */
 export function applyAction(
   game: GameState,
@@ -42,6 +60,7 @@ export function applyAction(
   if (!canAfford(game, kind)) return game
   const ds = game.districts[districtId]
   if (!ds) return game
+  if (!canActivateAction(game, districtId, kind, model)) return game
 
   const a = ACTIONS[kind]
   const fx = model.params.actionEffects
@@ -67,6 +86,18 @@ export function applyAction(
     case 'box-trap':
       next = { ...ds, trapTurns: fx.trapTurns }
       break
+    case 'emergency-shooting': {
+      const shotDistrict: DistrictState = {
+        ...ds,
+        urbanEncounterRate: ds.urbanEncounterRate * fx.emergencyUrbanFactor,
+      }
+      return {
+        ...game,
+        instructionPoints: game.instructionPoints - a.instructionPointCost,
+        dissatisfaction: clamp(game.dissatisfaction + fx.emergencyDissatisfaction, 0, 100),
+        districts: { ...game.districts, [districtId]: shotDistrict },
+      }
+    }
   }
 
   return {

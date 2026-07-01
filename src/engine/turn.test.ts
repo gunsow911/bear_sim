@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { projectEncounterRates, resolveEncounterPhase, applyAction } from './turn'
+import { projectEncounterRates, resolveEncounterPhase, applyAction, canActivateAction } from './turn'
 import { defaultRiskModel } from './model'
 import type { DistrictState, GameState, StageDef } from '@/types'
 
@@ -153,6 +153,24 @@ describe('箱わなによる捕獲', () => {
     g = applyAction(g, 'mt', 'box-trap', defaultRiskModel)
     const r = resolveEncounterPhase(g, stage, defaultRiskModel, () => 0)
     expect(r.game.districts.mt.forestInfluxFactor).toBeCloseTo(0.3) // 0.35×0.7=0.245 → 下限0.3
+  })
+})
+
+describe('緊急銃猟', () => {
+  it('市街遭遇率が閾値未満なら発動できない（状態不変）', () => {
+    const game = makeGame({}, { urbanEncounterRate: 10 }) // 閾値30未満
+    expect(canActivateAction(game, 'city', 'emergency-shooting', defaultRiskModel)).toBe(false)
+    const after = applyAction(game, 'city', 'emergency-shooting', defaultRiskModel)
+    expect(after).toEqual(game)
+  })
+
+  it('閾値以上なら市街遭遇率を大きく下げ、不満が少し上がる', () => {
+    const game = makeGame({}, { urbanEncounterRate: 60 })
+    expect(canActivateAction(game, 'city', 'emergency-shooting', defaultRiskModel)).toBe(true)
+    const after = applyAction(game, 'city', 'emergency-shooting', defaultRiskModel)
+    expect(after.districts.city.urbanEncounterRate).toBeCloseTo(60 * 0.2)
+    expect(after.dissatisfaction).toBe(defaultRiskModel.params.actionEffects.emergencyDissatisfaction)
+    expect(after.instructionPoints).toBe(game.instructionPoints - 2)
   })
 })
 

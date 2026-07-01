@@ -190,6 +190,7 @@ export type ActionKind =
   | 'electric-fence' // 電気柵（里山遭遇を1度無効化）
   | 'attractant-removal' // 誘引物の除去（数ターン里山・市街の上昇を抑制）
   | 'box-trap' // 箱わなによる捕獲（待ち伏せ→捕獲で里山出没を無効化し、山林直接流入を恒久ダウン）
+  | 'emergency-shooting' // 緊急銃猟（市街決壊時のみ発動可。市街遭遇率を即時に叩き落とすが不満が少し上がる）
 
 /** §5.2 対策コマンドの定義。 */
 export interface ActionDef {
