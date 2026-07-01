@@ -423,9 +423,28 @@ function DistrictDetail() {
                   ✂️ 草刈り 残り{ds.mowingBlockTurns}T
                 </span>
               )}
-              {ds.electricFenceTurns === 0 && ds.mowingBlockTurns === 0 && (
-                <span className="text-xs text-slate-500">対策の効果なし</span>
+              {ds.trapTurns > 0 && (
+                <span className="rounded bg-risk-safe/20 px-2 py-0.5 text-xs text-risk-safe">
+                  🪤 箱わな 待機 残り{ds.trapTurns}T
+                </span>
               )}
+              {ds.interventionTurns > 0 && (
+                <span className="rounded bg-risk-warn/20 px-2 py-0.5 text-xs text-risk-warn">
+                  🍎 誘引物除去 残り{ds.interventionTurns}T
+                </span>
+              )}
+              {ds.patrolTurns > 0 && (
+                <span className="rounded bg-slate-500/30 px-2 py-0.5 text-xs text-slate-200">
+                  🚓 パトロール 残り{ds.patrolTurns}T
+                </span>
+              )}
+              {ds.electricFenceTurns === 0 &&
+                ds.mowingBlockTurns === 0 &&
+                ds.trapTurns === 0 &&
+                ds.interventionTurns === 0 &&
+                ds.patrolTurns === 0 && (
+                  <span className="text-xs text-slate-500">対策の効果なし</span>
+                )}
             </div>
           </div>
         </div>
