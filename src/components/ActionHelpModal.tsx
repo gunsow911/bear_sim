@@ -5,7 +5,7 @@ import { ACTIONS } from '@/data/actions'
 
 /**
  * 施策ヘルプモーダル。施策バーの「？」から開き、現実の施策の解説とゲーム的な効果を示す。
- * マスキング維持のため gameEffectDesc に数値は出さない（データ側の責務）。
+ * ゲーム的な効果は施策の effectLabel（ボタン上と同じ質的ラベル）で代用する。マスキング維持。
  */
 export function ActionHelpModal() {
   const kind = useGameStore((s) => s.helpActionKind)
@@ -54,7 +54,7 @@ export function ActionHelpModal() {
             </section>
             <section>
               <p className="mb-1 text-xs font-bold text-risk-safe">ゲーム的な効果</p>
-              <p className="text-sm leading-relaxed text-slate-200">{action.gameEffectDesc}</p>
+              <p className="text-sm leading-relaxed text-slate-200">{action.effectLabel}</p>
             </section>
           </motion.div>
         </motion.div>

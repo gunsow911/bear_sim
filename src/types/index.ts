@@ -208,8 +208,6 @@ export interface ActionDef {
   realTerms?: string[]
   /** ヘルプモーダル：現実の施策の解説（教育的。ゲーム数値は含めない）。 */
   realWorldDesc: string
-  /** ヘルプモーダル：ゲーム的な効果の説明（質的。数値マスキング維持）。 */
-  gameEffectDesc: string
 }
 
 /** UI 上で予約中（実行前）の施策。地区とコマンド種別の組。 */
