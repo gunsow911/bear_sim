@@ -202,3 +202,26 @@ describe('パトロール', () => {
     expect(ev?.dissatisfactionDelta).toBeCloseTo(defaultRiskModel.params.damage.satoyama * 0.5)
   })
 })
+
+describe('追い払い', () => {
+  it('遭遇率を即時に下げ、慣れが増える', () => {
+    const game = makeGame({ satoyamaEncounterRate: 50 }, {})
+    const after = applyAction(game, 'mt', 'hazing', defaultRiskModel)
+    expect(after.districts.mt.satoyamaEncounterRate).toBeCloseTo(50 * (1 - 0.3)) // 慣れ0で30%カット
+    expect(after.districts.mt.hazingHabituation).toBe(1)
+  })
+
+  it('繰り返すほど効果が逓減する（2回目のカットは小さい）', () => {
+    let g = makeGame({ satoyamaEncounterRate: 100 }, {})
+    const first = 100 - applyAction(g, 'mt', 'hazing', defaultRiskModel).districts.mt.satoyamaEncounterRate
+    g = makeGame({ satoyamaEncounterRate: 100, hazingHabituation: 1 }, {})
+    const second = 100 - applyAction(g, 'mt', 'hazing', defaultRiskModel).districts.mt.satoyamaEncounterRate
+    expect(second).toBeLessThan(first)
+  })
+
+  it('不使用の地区は慣れが毎ターン回復する', () => {
+    const game = makeGame({ satoyamaEncounterRate: 10, hazingHabituation: 2 }, {})
+    const after = resolveEncounterPhase(game, stage, defaultRiskModel, () => 1).game
+    expect(after.districts.mt.hazingHabituation).toBeCloseTo(1.5) // 2 - 0.5
+  })
+})

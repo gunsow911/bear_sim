@@ -16,9 +16,9 @@ describe('ACTIONS data', () => {
     }
   })
 
-  it('6種別すべてが定義されている', () => {
+  it('7種別すべてが定義されている', () => {
     expect(Object.keys(ACTIONS).sort()).toEqual(
-      ['attractant-removal', 'box-trap', 'electric-fence', 'emergency-shooting', 'mowing', 'patrol'].sort(),
+      ['attractant-removal', 'box-trap', 'electric-fence', 'emergency-shooting', 'hazing', 'mowing', 'patrol'].sort(),
     )
   })
 })

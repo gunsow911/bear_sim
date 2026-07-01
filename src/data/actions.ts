@@ -59,6 +59,15 @@ export const ACTIONS: Record<ActionKind, ActionDef> = {
     effectLabel: 'しばらくの間、この地区で出没が起きても住民の不安が広がりにくくなる',
     realTerms: ['クマレンジャー'],
   },
+  hazing: {
+    kind: 'hazing',
+    name: '追い払い',
+    instructionPointCost: 1,
+    flavor:
+      '花火や犬、爆音機でクマを山へ追い返します。すぐ効きますが、同じ手を続けるとクマは慣れてしまい、だんだん通用しなくなります。',
+    effectLabel: 'この地区の出没を今すぐ薄く抑える（繰り返すと慣れて効かなくなる）',
+    realTerms: ['追い払い'],
+  },
 }
 
 export const ACTION_LIST: ActionDef[] = Object.values(ACTIONS)

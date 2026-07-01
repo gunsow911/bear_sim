@@ -89,6 +89,16 @@ export function applyAction(
     case 'patrol':
       next = { ...ds, patrolTurns: fx.patrolTurns }
       break
+    case 'hazing': {
+      const cut = fx.hazingBaseFraction * Math.pow(fx.hazingDecayBase, ds.hazingHabituation)
+      next = {
+        ...ds,
+        satoyamaEncounterRate: ds.satoyamaEncounterRate * (1 - cut),
+        urbanEncounterRate: ds.urbanEncounterRate * (1 - cut),
+        hazingHabituation: ds.hazingHabituation + 1,
+      }
+      break
+    }
     case 'emergency-shooting': {
       const shotDistrict: DistrictState = {
         ...ds,
@@ -301,6 +311,8 @@ export function resolveEncounterPhase(
         : ds.forestInfluxFactor,
       // パトロール：毎ターン減って失効。
       patrolTurns: Math.max(0, ds.patrolTurns - 1),
+      // 追い払い：慣れ(habituation)は使わなければ毎ターン少しずつ回復する。
+      hazingHabituation: Math.max(0, ds.hazingHabituation - model.params.actionEffects.hazingRecovery),
     }
   }
 
