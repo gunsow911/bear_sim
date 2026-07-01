@@ -9,6 +9,13 @@ import type { Adjacency, DistrictDef, DistrictFeature } from '@/types'
 export interface ModelCoefficients {
   /** 全体スケール係数 S。 */
   scale: number
+  /**
+   * 山林→里山の直接流入(第1項)で使う活発度の下限。
+   * 直接流入は max(活発度, この値) を使うため、活発度が0まで抑制されても山からの供給は
+   * 途絶えず、下限ぶんのベースラインが残る（クマは常に一定は里へ降りる）。
+   * 高活発度側の較正には影響しない（活発度 ≥ 下限 なら従来どおり）。
+   */
+  minForestActiveness: number
   /** 防波堤の決壊係数（この閾値を超えた里山遭遇率だけが市街へ溢れる）。 */
   breachThreshold: number
   /**
@@ -16,6 +23,17 @@ export interface ModelCoefficients {
    * 1 で従来の急峻な決壊、小さくするほど決壊が緩やかになる。バランス調整の主ノブ。
    */
   urbanBreachScale: number
+  /**
+   * 決壊のソフトさ（softplus の幅 k）。ハードな max(0, 里山−閾値) を滑らかにする。
+   * 0 で従来の折れ線（角あり）、大きいほど閾値前後がなだらかに立ち上がる。
+   */
+  breachSoftness: number
+  /**
+   * 市街への直接侵入係数。決壊を待たず、里山遭遇率 × 市街度(1−里山率) に比例して
+   * 市街遭遇率を上げる。市街度が高い（里山率が低い）地区ほど強く効き、「里山→市街」の
+   * 順番の縛りを都市部で外す（街なかは直接出没しやすい）。
+   */
+  urbanDirectScale: number
   /** 隣接の基礎移動しやすさ。 */
   baseMobility: number
   /**
@@ -42,9 +60,12 @@ export interface ModelCoefficients {
 
 export const DEFAULT_COEFFICIENTS: ModelCoefficients = {
   // 里山率（0〜1）が分母のため、比(0〜∞)時代より分母が小さい。scale を下げて調整。
-  scale: 0.05,
+  scale: 0.1,
+  minForestActiveness: 10, // 活発度0でも山林直接流入が残るベースライン。⚠️暫定値・要チューニング
   breachThreshold: 50,
   urbanBreachScale: 0.35, // 市街決壊を緩和（従来=1.0は急峻すぎた）
+  breachSoftness: 8, // 決壊閾値前後を softplus で滑らかに（角の二段挙動を解消）
+  urbanDirectScale: 0.05, // 市街度に比例した直接侵入。⚠️暫定値・要チューニング
   baseMobility: 0.2,
   // 方向バイアス導入で逆流ぶんが減るため、対称時代(0.4)より引き上げて総流入を補償。
   // ⚠️ 暫定値。挙動を見て要チューニング。
@@ -105,7 +126,7 @@ export interface SatoyamaRiseInput {
 
 /**
  * §4.3 里山遭遇率の上昇度
- *   = S * {(活発度 * 生息密度) / 里山率}                   … 山林隣接地区のみ
+ *   = S * {(max(活発度, 下限) * 生息密度) / 里山率}          … 山林隣接地区のみ
  *   + 隣接流入補正 * Σ(移動しやすさ * 隣接の里山遭遇率)
  *   + 人間の介入
  *
@@ -125,10 +146,12 @@ export function satoyamaRise(input: SatoyamaRiseInput): number {
     blockMountainInflux,
   } = input
 
-  // 第1項：山林からの直接流入（山林隣接地区のみ。草刈り遮断中は 0）
+  // 第1項：山林からの直接流入（山林隣接地区のみ。草刈り遮断中は 0）。
+  // 活発度は下限 minForestActiveness でクランプ：0まで抑制されてもベースラインは途絶えない。
+  const forestActiveness = Math.max(activeness, coeff.minForestActiveness)
   const directInflux =
     district.mountainAdjacent && !blockMountainInflux
-      ? coeff.scale * ((activeness * district.baseDensity) / district.satoyamaRatio)
+      ? coeff.scale * ((forestActiveness * district.baseDensity) / district.satoyamaRatio)
       : 0
 
   // 第2項：隣接地区からの侵入（移動しやすさ × 隣接の里山遭遇率の総和）に流入補正を掛ける。
@@ -159,19 +182,35 @@ export interface UrbanRiseInput {
 }
 
 /**
- * §4.4 市街遭遇率の上昇度（防波堤決壊モデル）
- *   = 決壊スケール * max(0, 里山遭遇率 - 決壊係数) * (人間の介入 / 里山率)
+ * ソフトプラス。max(0, x) を幅 k で滑らかにした関数。
+ * x≫0 で ≈x、x≪0 で ≈0、x=0 で k·ln2。k<=0 なら従来のハードな max(0, x)。
+ * 数値安定のため log-sum-exp 形で計算する。
+ */
+function softplus(x: number, k: number): number {
+  if (k <= 0) return Math.max(0, x)
+  return Math.max(x, 0) + k * Math.log1p(Math.exp(-Math.abs(x) / k))
+}
+
+/**
+ * §4.4 市街遭遇率の上昇度（防波堤決壊モデル ＋ 市街直接侵入）
+ *   = 決壊項  : urbanBreachScale * softplus(里山遭遇率 − 決壊閾値) * (人間の介入 / 里山率)   … C: ソフト化
+ *   + 直接項  : urbanDirectScale * 里山遭遇率 * (1 − 里山率) * 人間の介入                    … A: 直接侵入
  *
- * 里山遭遇率が決壊係数以下なら 0（クマは里山で引き返す）。
- * 里山率が小さい都市型地区ほど分母が小さく、決壊時に乗算でバーストする。
- * urbanBreachScale で決壊の急峻さ全体を抑える（既定 0.35 ＝従来の約1/3の速さ）。
+ * C（ソフト化）: 従来の max(0, …) の角（0→急上昇の二段挙動）を softplus で滑らかにする。
+ *   閾値をわずかに下回っても市街は少しだけ反応し、上回るほど従来どおり線形に立ち上がる。
+ * A（直接侵入）: 決壊を待たず、里山遭遇率に比例して市街も上がる。市街度(1−里山率)で重み付けし、
+ *   都市部ほど強い（＝街なかは直接出没しやすい）。山間(里山率≒0.9)ではほぼ効かず levee が残る。
+ * 里山率が小さい都市型地区ほど、決壊項の分母(1/里山率)と直接項の(1−里山率)の両方で市街が過敏に上がる。
  */
 export function urbanRise(input: UrbanRiseInput): number {
   const coeff = input.coeff ?? DEFAULT_COEFFICIENTS
   const { district, satoyamaEncounterRate, humanIntervention } = input
+  const s = satoyamaEncounterRate
+  const urbanness = 1 - district.satoyamaRatio
 
-  const overflow = Math.max(0, satoyamaEncounterRate - coeff.breachThreshold)
-  if (overflow === 0) return 0
+  const overflow = softplus(s - coeff.breachThreshold, coeff.breachSoftness)
+  const breachTerm = coeff.urbanBreachScale * overflow * (humanIntervention / district.satoyamaRatio)
+  const directTerm = coeff.urbanDirectScale * s * urbanness * humanIntervention
 
-  return coeff.urbanBreachScale * overflow * (humanIntervention / district.satoyamaRatio)
+  return breachTerm + directTerm
 }

@@ -2,20 +2,24 @@ import { describe, it, expect } from 'vitest'
 import { seasonalActiveness, applySeasonalActiveness } from './season'
 import type { GameState } from '@/types'
 
-describe('seasonalActiveness（YPくまっぷ月形状カーブ 7〜10月）', () => {
-  it('turn1=7月初旬は開始値10、turn16=10月ピークは80', () => {
+describe('seasonalActiveness（べき乗カーブ 10→100）', () => {
+  it('turn1=開始値10、turn16=ピーク100', () => {
     expect(seasonalActiveness(1, 16)).toBe(10)
-    expect(seasonalActiveness(16, 16)).toBe(80)
+    expect(seasonalActiveness(16, 16)).toBe(100)
   })
 
-  it('単調非減少：8月の谷はならされ、全週で前週以上（秋の荒食いへ向け一本調子）', () => {
+  it('単調非減少（秋の荒食いへ向け一本調子。季節では下がらない）', () => {
     const curve = Array.from({ length: 16 }, (_, i) => seasonalActiveness(i + 1, 16))
     for (let i = 1; i < curve.length; i++) {
       expect(curve[i]).toBeGreaterThanOrEqual(curve[i - 1])
     }
-    // 最小値は開始(turn1)、最大値は終盤(turn16)
     expect(Math.min(...curve)).toBe(curve[0])
     expect(Math.max(...curve)).toBe(curve[curve.length - 1])
+  })
+
+  it('前半から増加する（序盤の平坦なプラトーがない）', () => {
+    // turn1→turn5 で明確に増える（べき乗ランプ化の意図）。
+    expect(seasonalActiveness(5, 16)).toBeGreaterThan(seasonalActiveness(1, 16))
   })
 
   it('0〜100 に収まる', () => {

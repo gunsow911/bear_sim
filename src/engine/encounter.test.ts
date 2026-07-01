@@ -12,42 +12,46 @@ const district = (satoyamaRatio: number): DistrictDef => ({
   adjacencies: [],
 })
 
-describe('urbanRise（市街決壊モデル）', () => {
-  it('里山遭遇率が決壊閾値以下なら 0（クマは里山で引き返す）', () => {
-    expect(
-      urbanRise({
-        district: district(0.42),
-        satoyamaEncounterRate: DEFAULT_COEFFICIENTS.breachThreshold,
-        humanIntervention: 1,
-      }),
-    ).toBe(0)
+describe('urbanRise（決壊ソフト化 + 市街直接侵入）', () => {
+  it('C: 閾値以下でも市街はわずかに上がる（ハードな0ゲートを廃止＝過敏化）', () => {
+    // 従来は閾値以下で厳密に0だった。今は softplus + 直接項で小さく正になる。
+    const rise = urbanRise({ district: district(0.42), satoyamaEncounterRate: 30, humanIntervention: 1 })
+    expect(rise).toBeGreaterThan(0)
   })
 
-  it('決壊スケール係数で上昇度が線形に抑制される', () => {
-    const input = {
-      district: district(0.42),
-      satoyamaEncounterRate: 70,
-      humanIntervention: 1,
-    }
-    const soft: ModelCoefficients = { ...DEFAULT_COEFFICIENTS, urbanBreachScale: 0.5 }
-    const hard: ModelCoefficients = { ...DEFAULT_COEFFICIENTS, urbanBreachScale: 1 }
-    expect(urbanRise({ ...input, coeff: soft })).toBeCloseTo(
-      urbanRise({ ...input, coeff: hard }) * 0.5,
-    )
+  it('A: 閾値以下では市街度が高い地区ほど市街上昇が大きい（都市部は直接出没しやすい）', () => {
+    const s = 30 // 閾値50未満
+    const urban = urbanRise({ district: district(0.4), satoyamaEncounterRate: s, humanIntervention: 1 })
+    const rural = urbanRise({ district: district(0.9), satoyamaEncounterRate: s, humanIntervention: 1 })
+    expect(urban).toBeGreaterThan(rural)
   })
 
-  it('既定係数では overflow×scale×(介入/里山率)（旧式より明確に緩い）', () => {
-    // overflow=20, 介入=1, 里山率=0.42 → 20*scale/0.42
-    const rise = urbanRise({
-      district: district(0.42),
-      satoyamaEncounterRate: 70,
-      humanIntervention: 1,
-    })
-    expect(rise).toBeCloseTo((20 * DEFAULT_COEFFICIENTS.urbanBreachScale) / 0.42)
-    expect(rise).toBeLessThan(20 / 0.42) // 旧式(scale=1=47.6)より明確に緩い
+  it('里山遭遇率が上がるほど市街上昇も単調に増える', () => {
+    const d = district(0.42)
+    const low = urbanRise({ district: d, satoyamaEncounterRate: 20, humanIntervention: 1 })
+    const mid = urbanRise({ district: d, satoyamaEncounterRate: 45, humanIntervention: 1 })
+    const high = urbanRise({ district: d, satoyamaEncounterRate: 80, humanIntervention: 1 })
+    expect(mid).toBeGreaterThan(low)
+    expect(high).toBeGreaterThan(mid)
   })
 
-  it('里山率が小さい都市型ほど決壊が大きい（分母効果は維持）', () => {
+  it('大きな超過では決壊項が支配的（従来どおり線形に漸近）', () => {
+    // s≫閾値では softplus(s−50)≈(s−50)。直接項ぶんを差し引くと従来式に一致。
+    const s = 90
+    const d = district(0.42)
+    const rise = urbanRise({ district: d, satoyamaEncounterRate: s, humanIntervention: 1 })
+    const directTerm = DEFAULT_COEFFICIENTS.urbanDirectScale * s * (1 - 0.42)
+    const breachApprox = (DEFAULT_COEFFICIENTS.urbanBreachScale * (s - 50)) / 0.42
+    expect(rise - directTerm).toBeCloseTo(breachApprox, 1)
+  })
+
+  it('urbanBreachScale=0 でも直接項だけで市街は上がる（決壊非依存の経路）', () => {
+    const coeff: ModelCoefficients = { ...DEFAULT_COEFFICIENTS, urbanBreachScale: 0 }
+    const rise = urbanRise({ district: district(0.4), satoyamaEncounterRate: 40, humanIntervention: 1, coeff })
+    expect(rise).toBeCloseTo(DEFAULT_COEFFICIENTS.urbanDirectScale * 40 * (1 - 0.4))
+  })
+
+  it('里山率が小さい都市型ほど市街上昇が大きい（分母効果＋市街度の両方で維持）', () => {
     const urban = urbanRise({ district: district(0.42), satoyamaEncounterRate: 80, humanIntervention: 1 })
     const rural = urbanRise({ district: district(0.9), satoyamaEncounterRate: 80, humanIntervention: 1 })
     expect(urban).toBeGreaterThan(rural)
@@ -137,5 +141,31 @@ describe('satoyamaRise（隣接里山遭遇率の流入補正）', () => {
     })
     expect(base).toBeGreaterThan(0)
     expect(blocked).toBe(0)
+  })
+
+  it('活発度0でも山林直接流入(第1項)は途絶えない（下限クランプ）', () => {
+    const mt: DistrictDef = {
+      id: 'm', name: 'M', baseDensity: 9, satoyamaRatio: 0.9,
+      mountainAdjacent: true, features: [], adjacencies: [],
+    }
+    const zero = satoyamaRise({ district: mt, activeness: 0, neighborSatoyamaRates: {}, humanIntervention: 0 })
+    // 活発度0でも下限(minForestActiveness)ぶんの流入が残る
+    expect(zero).toBeCloseTo(
+      DEFAULT_COEFFICIENTS.scale * (DEFAULT_COEFFICIENTS.minForestActiveness * 9) / 0.9,
+    )
+    expect(zero).toBeGreaterThan(0)
+    // 遮断中は活発度に関係なく0
+    const blocked = satoyamaRise({ district: mt, activeness: 0, neighborSatoyamaRates: {}, humanIntervention: 0, blockMountainInflux: true })
+    expect(blocked).toBe(0)
+  })
+
+  it('活発度が下限以上なら従来どおり活発度に比例（高活発度側の較正は不変）', () => {
+    const mt: DistrictDef = {
+      id: 'm', name: 'M', baseDensity: 9, satoyamaRatio: 0.9,
+      mountainAdjacent: true, features: [], adjacencies: [],
+    }
+    const a = satoyamaRise({ district: mt, activeness: 40, neighborSatoyamaRates: {}, humanIntervention: 0 })
+    const b = satoyamaRise({ district: mt, activeness: 80, neighborSatoyamaRates: {}, humanIntervention: 0 })
+    expect(b).toBeCloseTo(a * 2) // 下限(8)以上では線形
   })
 })

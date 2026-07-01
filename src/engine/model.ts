@@ -72,7 +72,7 @@ export function createRiskModel(
 export const defaultRiskModel: RiskModel = createRiskModel('default', DEFAULT_COEFFICIENTS, {
   occurrenceSensitivity: 1,
   occurrenceExponent: 1.5, // 低い遭遇率の出没を抑制（>1）
-  sightedRateFactor: 0.2, // 出没した地区の遭遇率に掛ける倍率
+  sightedRateFactor: 0.5, // 出没した地区の遭遇率に掛ける倍率
 
   damage: { satoyama: 10, urban: 30 },
   actionEffects: {
