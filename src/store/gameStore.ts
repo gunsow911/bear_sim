@@ -264,9 +264,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const { game, stage, pendingActions } = state
       if (!game || !stage || game.phase !== 'action') return { ...state, actionModalOpen: false }
 
-      // 1) 予約を配列順に適用（指示Pを実消費）
+      // 1) 予約を適用（指示Pを実消費）。
+      // 切り札（コスト2）を日常（コスト1）より先に適用する: 唯一発動条件付きの緊急銃猟が、
+      // 同ターンの追い払い（市街遭遇率を即時に下げる）より前にターン開始時点の遭遇率で判定されるようにし、
+      // 「先に追い払いを置くと緊急銃猟が黙って不発になる」事故を防ぐ。
+      // Array.prototype.sort は安定ソートなので、同コスト内の順序は維持される。
+      const ordered = [...pendingActions].sort(
+        (a, b) => ACTIONS[b.kind].instructionPointCost - ACTIONS[a.kind].instructionPointCost,
+      )
       let applied = game
-      for (const p of pendingActions) {
+      for (const p of ordered) {
         applied = applyActionEngine(applied, p.districtId, p.kind, activeRiskModel)
       }
 

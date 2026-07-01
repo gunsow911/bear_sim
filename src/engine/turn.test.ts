@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { projectEncounterRates, resolveEncounterPhase, applyAction, canActivateAction } from './turn'
 import { defaultRiskModel } from './model'
-import type { DistrictState, GameState, StageDef } from '@/types'
+import { ACTIONS } from '@/data/actions'
+import type { ActionKind, DistrictId, DistrictState, GameState, StageDef } from '@/types'
 
 const stage: StageDef = {
   id: 's',
@@ -223,5 +224,54 @@ describe('追い払い', () => {
     const game = makeGame({ satoyamaEncounterRate: 10, hazingHabituation: 2 }, {})
     const after = resolveEncounterPhase(game, stage, defaultRiskModel, () => 1).game
     expect(after.districts.mt.hazingHabituation).toBeCloseTo(1.5) // 2 - 0.5
+  })
+})
+
+describe('commitActions のコスト降順適用（切り札→日常）', () => {
+  // gameStore.commitActions の適用ループを再現する（切り札=コスト2 を日常=コスト1 より先に安定ソート）。
+  // ストアの commitActions は resolveEncounterPhase を Math.random で回すため、
+  // 非決定的な出没ノイズを避けてここでは rng を注入できるエンジン層で回帰を固定する。
+  const applyOrdered = (
+    game: GameState,
+    pending: { districtId: DistrictId; kind: ActionKind }[],
+  ): GameState => {
+    const ordered = [...pending].sort(
+      (a, b) => ACTIONS[b.kind].instructionPointCost - ACTIONS[a.kind].instructionPointCost,
+    )
+    let applied = game
+    for (const p of ordered) {
+      applied = applyAction(applied, p.districtId, p.kind, defaultRiskModel)
+    }
+    return applied
+  }
+
+  it('同地区に「追い払い→緊急銃猟」を予約しても、切り札が先に評価され不発しない', () => {
+    // ターン開始時点の市街遭遇率40は閾値30超。追い払いが先だと 40*0.7=28<30 で緊急銃猟が不発になる。
+    const game = makeGame({}, { urbanEncounterRate: 40 })
+    const applied = applyOrdered(game, [
+      { districtId: 'city', kind: 'hazing' }, // staging 順は追い払いが先
+      { districtId: 'city', kind: 'emergency-shooting' },
+    ])
+
+    // 緊急銃猟(×0.2)→追い払い(×0.7)の順で適用されるので 40*0.2*0.7=5.6（不発なら28のまま）。
+    expect(applied.districts.city.urbanEncounterRate).toBeCloseTo(40 * 0.2 * 0.7)
+    // 緊急銃猟が実際に発火：不満度 +emergencyDissatisfaction、指示P -3(=2+1)。
+    expect(applied.dissatisfaction).toBe(defaultRiskModel.params.actionEffects.emergencyDissatisfaction)
+    expect(applied.instructionPoints).toBe(game.instructionPoints - 3)
+  })
+
+  it('（対照）配列順そのまま適用だと緊急銃猟が不発になることを確認', () => {
+    // ソートを行わず staging 順（追い払い→緊急銃猟）で適用すると、閾値割れで緊急銃猟が no-op になる。
+    const game = makeGame({}, { urbanEncounterRate: 40 })
+    let applied = game
+    for (const p of [
+      { districtId: 'city' as DistrictId, kind: 'hazing' as ActionKind },
+      { districtId: 'city' as DistrictId, kind: 'emergency-shooting' as ActionKind },
+    ]) {
+      applied = applyAction(applied, p.districtId, p.kind, defaultRiskModel)
+    }
+    expect(applied.districts.city.urbanEncounterRate).toBeCloseTo(40 * 0.7) // 28 のまま
+    expect(applied.dissatisfaction).toBe(0) // 緊急銃猟が発火していない
+    expect(applied.instructionPoints).toBe(game.instructionPoints - 1) // 追い払い分のみ消費
   })
 })
