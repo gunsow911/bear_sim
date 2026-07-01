@@ -49,11 +49,10 @@ export function ActionHelpModal() {
               </button>
             </div>
             <section className="mb-4">
-              <p className="mb-1 text-xs font-bold text-slate-400">現実の施策</p>
               <p className="text-sm leading-relaxed text-slate-200">{action.realWorldDesc}</p>
             </section>
             <section>
-              <p className="mb-1 text-xs font-bold text-risk-safe">ゲーム的な効果</p>
+              <p className="mb-1 text-xs font-bold text-risk-safe">効果</p>
               <p className="text-sm leading-relaxed text-slate-200">{action.effectLabel}</p>
             </section>
           </motion.div>
