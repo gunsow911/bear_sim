@@ -188,6 +188,7 @@ export interface GameMessage {
 export type ActionKind =
   | 'mowing' // 広域草刈り（数ターン流入遮断）
   | 'electric-fence' // 電気柵（里山遭遇を1度無効化）
+  | 'attractant-removal' // 誘引物の除去（数ターン里山・市街の上昇を抑制）
 
 /** §5.2 対策コマンドの定義。 */
 export interface ActionDef {

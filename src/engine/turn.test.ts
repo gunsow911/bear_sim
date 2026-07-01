@@ -123,3 +123,22 @@ describe('projectEncounterRates', () => {
     }
   })
 })
+
+describe('誘引物の除去', () => {
+  it('里山・市街の予測上昇を下げ、N ターンで中立へ戻る', () => {
+    const game = makeGame({ satoyamaEncounterRate: 50 }, { satoyamaEncounterRate: 40, urbanEncounterRate: 40 })
+    const before = projectEncounterRates(game, stage, defaultRiskModel).mt.satoyama
+    const applied = applyAction(game, 'mt', 'attractant-removal', defaultRiskModel)
+    expect(applied.districts.mt.intervention.satoyama).toBeLessThan(0)
+    expect(applied.districts.mt.intervention.urban).toBeLessThan(0)
+    const after = projectEncounterRates(applied, stage, defaultRiskModel).mt.satoyama
+    expect(after).toBeLessThan(before)
+    // 有効ターンを消費すると中立へ戻る
+    let g = applied
+    for (let i = 0; i < defaultRiskModel.params.actionEffects.attractantInterventionTurns; i++) {
+      g = resolveEncounterPhase(g, stage, defaultRiskModel, () => 1).game
+    }
+    expect(g.districts.mt.intervention).toEqual({ satoyama: 0, urban: 0 })
+    expect(g.districts.mt.interventionTurns).toBe(0)
+  })
+})

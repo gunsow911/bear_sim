@@ -54,6 +54,16 @@ export function applyAction(
     case 'electric-fence':
       next = { ...ds, electricFenceTurns: fx.electricFenceTurns }
       break
+    case 'attractant-removal':
+      next = {
+        ...ds,
+        intervention: {
+          satoyama: fx.attractantSatoyamaIntervention,
+          urban: fx.attractantUrbanIntervention,
+        },
+        interventionTurns: fx.attractantInterventionTurns,
+      }
+      break
   }
 
   return {
@@ -173,6 +183,10 @@ export function resolveEncounterPhase(
     const fenceActive = ds.electricFenceTurns > 0
     let fenceConsumed = false
 
+    const nextInterventionTurns = Math.max(0, ds.interventionTurns - 1)
+    const interventionActive = nextInterventionTurns > 0
+    const nextIntervention = interventionActive ? ds.intervention : { satoyama: 0, urban: 0 }
+
     const satoyamaHit = rng() < model.occurrenceProbability(satoyama)
     const urbanHit = rng() < model.occurrenceProbability(urban)
 
@@ -222,7 +236,9 @@ export function resolveEncounterPhase(
       mowingBlockTurns: Math.max(0, ds.mowingBlockTurns - 1),
       pendingDecaySatoyama: satoyamaHit,
       pendingDecayUrban: urbanHit,
-      // 介入項は保留中（駆動源なし）。初期値のまま引き継ぐ。
+      // 誘引物の除去：残ターンを消費し、0になったら中立(0,0)へ戻す。
+      interventionTurns: nextInterventionTurns,
+      intervention: nextIntervention,
     }
   }
 

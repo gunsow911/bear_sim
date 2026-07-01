@@ -23,6 +23,15 @@ export const ACTIONS: Record<ActionKind, ActionDef> = {
       '農地のまわりに侵入防止柵を張りめぐらせます。里山から下りてくる出没を一度だけ確実に食い止めます。',
     effectLabel: '数ターン以内の里山の出没を1回だけ防ぐ',
   },
+  'attractant-removal': {
+    kind: 'attractant-removal',
+    name: '誘引物の除去',
+    instructionPointCost: 1,
+    flavor:
+      '放置された柿や栗、屋外の生ゴミを片付ける誘引物除去を地域ぐるみで進めます。里山でも市街でも、クマが人里へ通う"動機"そのものを、しばらくの間そぎ続けます。',
+    effectLabel: 'この地区の里山・市街の出没圧をしばらく抑え続ける',
+    realTerms: ['誘引物除去'],
+  },
 }
 
 export const ACTION_LIST: ActionDef[] = Object.values(ACTIONS)
