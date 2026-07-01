@@ -63,9 +63,13 @@
 
 ### C. 施策バー（`src/App.tsx` `ActionBar` 改修）
 
-- **並び順**：`[...ACTION_LIST].sort((a, b) => a.instructionPointCost - b.instructionPointCost)`
-  でコスト昇順に描画（安定ソートで同コスト内は現行順＝日常5→切り札2）。
-  ※ これは表示順のみ。`commitActions` の適用順（切り札を先に＝コスト降順）とは独立。
+- **並び順**：`src/data/actions.ts` の `ACTIONS` オブジェクトの**定義順そのものを並べ替える**
+  （`ACTION_LIST = Object.values(ACTIONS)` がそのまま表示順になる）。render 時ソートはしない。
+  目標順＝日常5→切り札2：`mowing`（緩衝帯刈り払い）→ `electric-fence`（電気柵）→
+  `attractant-removal`（誘引物除去）→ `patrol`（パトロール）→ `hazing`（追い払い）→
+  `box-trap`（箱わな）→ `emergency-shooting`（緊急銃猟）。
+  ※ これは表示順のみ。`commitActions` の適用順（切り札を先に＝コスト降順ソート）とは独立で、
+  そちらのロジックは本改修で変更しない。`actions.test.ts` の種別集合テストは順序非依存（sort比較）なので影響なし。
 - 各ボタンの右上に小さな「？」アイコンボタンを追加：`onClick` で
   `e.stopPropagation()` → `openActionHelp(a.kind)`（予約トグルを発火させない）。
   `aria-label="{施策名}の説明"`。
@@ -106,7 +110,7 @@
 | ファイル | 変更 |
 |---|---|
 | `src/types/index.ts` | `ActionDef` に `realWorldDesc` / `gameEffectDesc`（必須）を追加 |
-| `src/data/actions.ts` | 7施策すべてに `realWorldDesc` / `gameEffectDesc` を記述 |
+| `src/data/actions.ts` | 7施策すべてに `realWorldDesc` / `gameEffectDesc` を記述。`ACTIONS` の定義順を日常5→切り札2へ並べ替え（表示順） |
 | `src/components/ActionHelpModal.tsx` | 新規。ヘルプモーダル本体 |
 | `src/components/ActionDetailCard.tsx` | 削除（未使用化） |
 | `src/store/gameStore.ts` | `helpActionKind` state ＋ `openActionHelp`/`closeActionHelp` |
@@ -126,5 +130,5 @@
 - モーダルは2セクション（現実の施策／ゲーム的な効果）。
 - 状態バッジは 罠・誘引物・巡回 を追加（慣れは非表示）。
 - 緊急銃猟の非活性理由はモーダル内のみ。
-- 施策バーはコスト昇順並び（表示のみ／適用順とは独立）。
+- 施策バーの並びは `ACTIONS` の定義順を並べ替えて実現（日常5→切り札2／表示のみ／適用順とは独立）。render時ソートはしない。
 - ホバー詳細（ActionDetailCard）は撤去・ファイル削除。
