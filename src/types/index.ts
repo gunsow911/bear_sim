@@ -204,7 +204,10 @@ export interface ActionDef {
   flavor: string
   /** 質的な効果（例「この地区の里山の出没を1回だけ防ぐ」）。数値は出さない。 */
   effectLabel: string
-  /** flavor 内で用語ツールチップ対象となる現実用語（議題の realTerms と同様。任意）。 */
+  /**
+   * realWorldDesc 内で用語ツールチップ対象となる現実用語（ヘルプモーダルで wrapTerms 対象）。
+   * 各用語は realWorldDesc 中に厳密一致で出現し、かつ GLOSSARY にキーが存在する必要がある。任意。
+   */
   realTerms?: string[]
   /** ヘルプモーダル：現実の施策の解説（教育的。ゲーム数値は含めない）。 */
   realWorldDesc: string

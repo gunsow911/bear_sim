@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useGameStore } from '@/store/gameStore'
 import { ACTIONS } from '@/data/actions'
+import { wrapTerms } from './wrapTerms'
 
 /**
  * 施策ヘルプモーダル。施策バーの「？」から開き、現実の施策の解説とゲーム的な効果を示す。
@@ -49,7 +50,11 @@ export function ActionHelpModal() {
               </button>
             </div>
             <section className="mb-4">
-              <p className="text-sm leading-relaxed text-slate-200">{action.realWorldDesc}</p>
+              <p className="text-sm leading-relaxed text-slate-200">
+                {action.realTerms?.length
+                  ? wrapTerms(action.realWorldDesc, action.realTerms)
+                  : action.realWorldDesc}
+              </p>
             </section>
             <section>
               <p className="mb-1 text-xs font-bold text-risk-safe">効果</p>
