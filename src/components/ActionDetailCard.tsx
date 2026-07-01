@@ -30,7 +30,7 @@ export function ActionDetailCard({ action }: { action: ActionDef }) {
         {action.instructionPointCost >= 2 && (
           <div className="flex gap-2">
             <dt className="shrink-0 text-slate-400">コスト</dt>
-            <dd className="font-bold text-amber-300">指示{action.instructionPointCost}（切り札）</dd>
+            <dd className="font-bold text-amber-300">指示{action.instructionPointCost}</dd>
           </div>
         )}
       </dl>
