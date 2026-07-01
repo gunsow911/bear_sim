@@ -47,10 +47,15 @@ function initDistrictStates(stage: StageDef): Record<DistrictId, DistrictState> 
       id: d.id,
       satoyamaEncounterRate: 0,
       urbanEncounterRate: 0,
-      // 介入項は保留中（駆動源なし）。里山=加算項の中立0、市街=乗算係数の中立1。
-      intervention: { satoyama: 0, urban: 1 },
+      // 介入項は保留中（駆動源なし）。里山・市街とも加算項の中立0。
+      intervention: { satoyama: 0, urban: 0 },
       electricFenceTurns: 0,
       mowingBlockTurns: 0,
+      interventionTurns: 0,
+      trapTurns: 0,
+      forestInfluxFactor: 1,
+      patrolTurns: 0,
+      hazingHabituation: 0,
       pendingDecaySatoyama: false,
       pendingDecayUrban: false,
     },

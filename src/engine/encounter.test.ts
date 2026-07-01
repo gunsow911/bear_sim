@@ -15,22 +15,22 @@ const district = (satoyamaRatio: number): DistrictDef => ({
 describe('urbanRise（決壊ソフト化 + 市街直接侵入）', () => {
   it('C: 閾値以下でも市街はわずかに上がる（ハードな0ゲートを廃止＝過敏化）', () => {
     // 従来は閾値以下で厳密に0だった。今は softplus + 直接項で小さく正になる。
-    const rise = urbanRise({ district: district(0.42), satoyamaEncounterRate: 30, humanIntervention: 1 })
+    const rise = urbanRise({ district: district(0.42), satoyamaEncounterRate: 30, humanIntervention: 0 })
     expect(rise).toBeGreaterThan(0)
   })
 
   it('A: 閾値以下では市街度が高い地区ほど市街上昇が大きい（都市部は直接出没しやすい）', () => {
     const s = 30 // 閾値50未満
-    const urban = urbanRise({ district: district(0.4), satoyamaEncounterRate: s, humanIntervention: 1 })
-    const rural = urbanRise({ district: district(0.9), satoyamaEncounterRate: s, humanIntervention: 1 })
+    const urban = urbanRise({ district: district(0.4), satoyamaEncounterRate: s, humanIntervention: 0 })
+    const rural = urbanRise({ district: district(0.9), satoyamaEncounterRate: s, humanIntervention: 0 })
     expect(urban).toBeGreaterThan(rural)
   })
 
   it('里山遭遇率が上がるほど市街上昇も単調に増える', () => {
     const d = district(0.42)
-    const low = urbanRise({ district: d, satoyamaEncounterRate: 20, humanIntervention: 1 })
-    const mid = urbanRise({ district: d, satoyamaEncounterRate: 45, humanIntervention: 1 })
-    const high = urbanRise({ district: d, satoyamaEncounterRate: 80, humanIntervention: 1 })
+    const low = urbanRise({ district: d, satoyamaEncounterRate: 20, humanIntervention: 0 })
+    const mid = urbanRise({ district: d, satoyamaEncounterRate: 45, humanIntervention: 0 })
+    const high = urbanRise({ district: d, satoyamaEncounterRate: 80, humanIntervention: 0 })
     expect(mid).toBeGreaterThan(low)
     expect(high).toBeGreaterThan(mid)
   })
@@ -42,7 +42,7 @@ describe('urbanRise（決壊ソフト化 + 市街直接侵入）', () => {
     const ratio = 0.42
     const d = district(ratio)
     const c = DEFAULT_COEFFICIENTS
-    const rise = urbanRise({ district: d, satoyamaEncounterRate: s, humanIntervention: 1 })
+    const rise = urbanRise({ district: d, satoyamaEncounterRate: s, humanIntervention: 0 })
     const directTerm = c.urbanDirectScale * s * (1 - ratio)
     const breachLinear = (c.urbanBreachScale * (s - c.breachThreshold)) / ratio
     const breachActual = rise - directTerm
@@ -52,14 +52,21 @@ describe('urbanRise（決壊ソフト化 + 市街直接侵入）', () => {
 
   it('urbanBreachScale=0 でも直接項だけで市街は上がる（決壊非依存の経路）', () => {
     const coeff: ModelCoefficients = { ...DEFAULT_COEFFICIENTS, urbanBreachScale: 0 }
-    const rise = urbanRise({ district: district(0.4), satoyamaEncounterRate: 40, humanIntervention: 1, coeff })
+    const rise = urbanRise({ district: district(0.4), satoyamaEncounterRate: 40, humanIntervention: 0, coeff })
     expect(rise).toBeCloseTo(DEFAULT_COEFFICIENTS.urbanDirectScale * 40 * (1 - 0.4))
   })
 
   it('里山率が小さい都市型ほど市街上昇が大きい（分母効果＋市街度の両方で維持）', () => {
-    const urban = urbanRise({ district: district(0.42), satoyamaEncounterRate: 80, humanIntervention: 1 })
-    const rural = urbanRise({ district: district(0.9), satoyamaEncounterRate: 80, humanIntervention: 1 })
+    const urban = urbanRise({ district: district(0.42), satoyamaEncounterRate: 80, humanIntervention: 0 })
+    const rural = urbanRise({ district: district(0.9), satoyamaEncounterRate: 80, humanIntervention: 0 })
     expect(urban).toBeGreaterThan(rural)
+  })
+
+  it('人間介入は加算で抑制する（中立0）。負値でriseが下がり、0なら従来どおり', () => {
+    const d = district(0.4)
+    const neutral = urbanRise({ district: d, satoyamaEncounterRate: 60, humanIntervention: 0 })
+    const suppressed = urbanRise({ district: d, satoyamaEncounterRate: 60, humanIntervention: -5 })
+    expect(suppressed).toBeCloseTo(neutral - 5)
   })
 })
 

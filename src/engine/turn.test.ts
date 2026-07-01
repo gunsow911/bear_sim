@@ -33,9 +33,14 @@ const dstate = (over: Partial<DistrictState> = {}): DistrictState => ({
   id: 'x',
   satoyamaEncounterRate: 0,
   urbanEncounterRate: 0,
-  intervention: { satoyama: 0, urban: 1 },
+  intervention: { satoyama: 0, urban: 0 },
   electricFenceTurns: 0,
   mowingBlockTurns: 0,
+  interventionTurns: 0,
+  trapTurns: 0,
+  forestInfluxFactor: 1,
+  patrolTurns: 0,
+  hazingHabituation: 0,
   pendingDecaySatoyama: false,
   pendingDecayUrban: false,
   ...over,
@@ -114,7 +119,7 @@ describe('projectEncounterRates', () => {
     )
     const after = resolveEncounterPhase(game, stage, defaultRiskModel, () => 1).game
     for (const id of ['mt', 'city'] as const) {
-      expect(after.districts[id].intervention).toEqual({ satoyama: 0, urban: 1 })
+      expect(after.districts[id].intervention).toEqual({ satoyama: 0, urban: 0 })
     }
   })
 })
