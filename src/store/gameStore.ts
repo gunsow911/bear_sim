@@ -10,6 +10,7 @@ import { activeRiskModel } from '@/engine/model'
 import {
   applyAction as applyActionEngine,
   applySightingDecay,
+  canActivateAction,
   resolveEncounterPhase,
   type EncounterEvent,
 } from '@/engine/turn'
@@ -47,10 +48,15 @@ function initDistrictStates(stage: StageDef): Record<DistrictId, DistrictState> 
       id: d.id,
       satoyamaEncounterRate: 0,
       urbanEncounterRate: 0,
-      // 介入項は保留中（駆動源なし）。里山=加算項の中立0、市街=乗算係数の中立1。
-      intervention: { satoyama: 0, urban: 1 },
+      // 介入項は保留中（駆動源なし）。里山・市街とも加算項の中立0。
+      intervention: { satoyama: 0, urban: 0 },
       electricFenceTurns: 0,
       mowingBlockTurns: 0,
+      interventionTurns: 0,
+      trapTurns: 0,
+      forestInfluxFactor: 1,
+      patrolTurns: 0,
+      hazingHabituation: 0,
       pendingDecaySatoyama: false,
       pendingDecayUrban: false,
     },
@@ -243,6 +249,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (!game || game.phase !== 'action' || !selectedDistrictId) return false
     // 既に当該地区へ予約済みなら、OFF にできるよう常に許可
     if (get().isStaged(selectedDistrictId, kind)) return true
+    if (!canActivateAction(game, selectedDistrictId, kind, activeRiskModel)) return false
     const a = ACTIONS[kind]
     const pointsLeft = game.instructionPoints - get().reservedPoints()
     return pointsLeft >= a.instructionPointCost
@@ -257,9 +264,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const { game, stage, pendingActions } = state
       if (!game || !stage || game.phase !== 'action') return { ...state, actionModalOpen: false }
 
-      // 1) 予約を配列順に適用（指示Pを実消費）
+      // 1) 予約を適用（指示Pを実消費）。
+      // 切り札（コスト2）を日常（コスト1）より先に適用する: 唯一発動条件付きの緊急銃猟が、
+      // 同ターンの追い払い（市街遭遇率を即時に下げる）より前にターン開始時点の遭遇率で判定されるようにし、
+      // 「先に追い払いを置くと緊急銃猟が黙って不発になる」事故を防ぐ。
+      // Array.prototype.sort は安定ソートなので、同コスト内の順序は維持される。
+      const ordered = [...pendingActions].sort(
+        (a, b) => ACTIONS[b.kind].instructionPointCost - ACTIONS[a.kind].instructionPointCost,
+      )
       let applied = game
-      for (const p of pendingActions) {
+      for (const p of ordered) {
         applied = applyActionEngine(applied, p.districtId, p.kind, activeRiskModel)
       }
 

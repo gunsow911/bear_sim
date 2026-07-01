@@ -1,10 +1,5 @@
 /**
  * 差し替え可能な「リスクモデル」。
- *
- * ⚠️ 数式・係数・出現確率・被害量はすべて【仮】。
- *    モデルを差し替えるには `createRiskModel(...)` に別の数値を渡すか、
- *    RiskModel インターフェースを満たす独自オブジェクトを作り、
- *    `activeRiskModel` の代入先を変えるだけでよい（エンジン側は無改修）。
  */
 
 import {
@@ -37,6 +32,34 @@ export interface RiskModelParams {
     mowingInfluxCutRate: number
     /** 電気柵：有効ターン数（この間の里山遭遇を1度だけ無効化。発揮で即失効）。 */
     electricFenceTurns: number
+    /** 誘引物除去：intervention を有効化する持続ターン数。 */
+    attractantInterventionTurns: number
+    /** 誘引物除去：里山側 intervention への加算（負値）。 */
+    attractantSatoyamaIntervention: number
+    /** 誘引物除去：市街側 intervention への加算（負値）。 */
+    attractantUrbanIntervention: number
+    /** 箱わな：待ち伏せの残ターン数。 */
+    trapTurns: number
+    /** 箱わな：捕獲成立時に forestInfluxFactor へ掛ける係数。 */
+    trapForestFactor: number
+    /** 箱わな：forestInfluxFactor の下限クランプ。 */
+    trapForestFloor: number
+    /** 緊急銃猎：市街遭遇率がこの閾値以上で発動可能。 */
+    emergencyUrbanThreshold: number
+    /** 緊急銃猎：発動時に市街遭遇率へ掛ける倍率。 */
+    emergencyUrbanFactor: number
+    /** 緊急銃猎：発動時の不満度加算。 */
+    emergencyDissatisfaction: number
+    /** パトロール：巡回の残ターン数。 */
+    patrolTurns: number
+    /** パトロール：出没時の不満加算に掛ける倍率。 */
+    patrolDamageFactor: number
+    /** 追い払い：慣れ(habituation)が0のときのカット率。 */
+    hazingBaseFraction: number
+    /** 追い払い：慣れが効果を弱める際の底（累乗の底）。 */
+    hazingDecayBase: number
+    /** 追い払い：毎ターンの慣れ回復量。 */
+    hazingRecovery: number
   }
 }
 
@@ -72,7 +95,7 @@ export function createRiskModel(
   }
 }
 
-/** 標準モデル（仮の数値）。 */
+/** 標準モデル */
 export const defaultRiskModel: RiskModel = createRiskModel('default', DEFAULT_COEFFICIENTS, {
   occurrenceSensitivity: 1,
   occurrenceExponent: 1.5, // 低い遭遇率の出没を抑制（>1）
@@ -83,6 +106,20 @@ export const defaultRiskModel: RiskModel = createRiskModel('default', DEFAULT_CO
     mowingBlockTurns: 2,
     mowingInfluxCutRate: 0.5, // 山林→里山流入を50%カット
     electricFenceTurns: 4, // 電気柵は4ターン有効
+    attractantInterventionTurns: 3,
+    attractantSatoyamaIntervention: -8,
+    attractantUrbanIntervention: -6,
+    trapTurns: 3,
+    trapForestFactor: 0.7,
+    trapForestFloor: 0.3,
+    emergencyUrbanThreshold: 30,
+    emergencyUrbanFactor: 0.2,
+    emergencyDissatisfaction: 5,
+    patrolTurns: 3,
+    patrolDamageFactor: 0.5,
+    hazingBaseFraction: 0.3,
+    hazingDecayBase: 0.6,
+    hazingRecovery: 0.5,
   },
 })
 

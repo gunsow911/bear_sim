@@ -126,6 +126,8 @@ export interface SatoyamaRiseInput {
    * 広域草刈り中は 1−カット率（例 0.5）を渡して地区間の移動も弱める。
    */
   neighborInfluxFactor?: number
+  /** 第1項（山林直接流入）に掛ける恒久係数（0〜1、既定1）。箱わな捕獲で下がる。 */
+  forestInfluxFactor?: number
   coeff?: ModelCoefficients
 }
 
@@ -150,13 +152,15 @@ export function satoyamaRise(input: SatoyamaRiseInput): number {
     humanIntervention,
     mountainInfluxFactor = 1,
     neighborInfluxFactor = 1,
+    forestInfluxFactor = 1,
   } = input
 
   // 第1項：山林からの直接流入（山林隣接地区のみ）。mountainInfluxFactor で弱める（草刈り＝0.5）。
+  // forestInfluxFactor は箱わな捕獲などで下がる恒久係数（DistrictState.forestInfluxFactor）。
   // 活発度は下限 minForestActiveness でクランプ：0まで抑制されてもベースラインは途絶えない。
   const forestActiveness = Math.max(activeness, coeff.minForestActiveness)
   const directInflux = district.mountainAdjacent
-    ? coeff.scale * ((forestActiveness * district.baseDensity) / district.satoyamaRatio) * mountainInfluxFactor
+    ? coeff.scale * ((forestActiveness * district.baseDensity) / district.satoyamaRatio) * mountainInfluxFactor * forestInfluxFactor
     : 0
 
   // 第2項：隣接地区からの侵入（移動しやすさ × 隣接の里山遭遇率の総和）に流入補正を掛ける。
@@ -183,7 +187,7 @@ export interface UrbanRiseInput {
   district: DistrictDef
   /** この地区の現在の里山遭遇率。 */
   satoyamaEncounterRate: number
-  /** §4.4 人間の介入(市街)。負で抑制。 */
+  /** §4.4 人間の介入(市街)。加算項（負で抑制、中立0）。 */
   humanIntervention: number
   coeff?: ModelCoefficients
 }
@@ -199,9 +203,10 @@ function softplus(x: number, k: number): number {
 }
 
 /**
- * §4.4 市街遭遇率の上昇度（防波堤決壊モデル ＋ 市街直接侵入）
- *   = 決壊項  : urbanBreachScale * softplus(里山遭遇率 − 決壊閾値) * (人間の介入 / 里山率)   … C: ソフト化
- *   + 直接項  : urbanDirectScale * 里山遭遇率 * (1 − 里山率) * 人間の介入                    … A: 直接侵入
+ * §4.4 市街遭遇率の上昇度（防波堤決壊モデル ＋ 市街直接侵入 ＋ 人間の介入）
+ *   = 決壊項  : urbanBreachScale * softplus(里山遭遇率 − 決壊閾値) / 里山率   … C: ソフト化
+ *   + 直接項  : urbanDirectScale * 里山遭遇率 * (1 − 里山率)                … A: 直接侵入
+ *   + 人間の介入（加算項。負で抑制、中立0）                                   … 里山側 satoyamaRise と対称
  *
  * C（ソフト化）: 従来の max(0, …) の角（0→急上昇の二段挙動）を softplus で滑らかにする。
  *   閾値をわずかに下回っても市街は少しだけ反応し、上回るほど従来どおり線形に立ち上がる。
@@ -216,8 +221,9 @@ export function urbanRise(input: UrbanRiseInput): number {
   const urbanness = 1 - district.satoyamaRatio
 
   const overflow = softplus(s - coeff.breachThreshold, coeff.breachSoftness)
-  const breachTerm = coeff.urbanBreachScale * overflow * (humanIntervention / district.satoyamaRatio)
-  const directTerm = coeff.urbanDirectScale * s * urbanness * humanIntervention
+  const breachTerm = coeff.urbanBreachScale * overflow / district.satoyamaRatio
+  const directTerm = coeff.urbanDirectScale * s * urbanness
 
-  return breachTerm + directTerm
+  // 人間の介入は加算（負で抑制、中立0）。里山側 satoyamaRise と対称。
+  return breachTerm + directTerm + humanIntervention
 }

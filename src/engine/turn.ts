@@ -30,8 +30,26 @@ export function canAfford(game: GameState, kind: ActionKind): boolean {
 }
 
 /**
+ * 施策の地区固有の発動条件を満たすか（指示ポイントの余力は canAfford が別途判定）。
+ * 緊急銃猟は市街遭遇率が閾値以上のときのみ発動可。他施策は常に true。
+ */
+export function canActivateAction(
+  game: GameState,
+  districtId: DistrictId,
+  kind: ActionKind,
+  model: RiskModel,
+): boolean {
+  const ds = game.districts[districtId]
+  if (!ds) return false
+  if (kind === 'emergency-shooting') {
+    return ds.urbanEncounterRate >= model.params.actionEffects.emergencyUrbanThreshold
+  }
+  return true
+}
+
+/**
  * 対策コマンドを1つ適用した新しいゲーム状態を返す。
- * リソース不足・地区不在の場合は状態を変えずに返す（呼び出し側で canAfford を確認推奨）。
+ * リソース不足・地区不在・発動条件未達の場合は状態を変えずに返す（呼び出し側で canAfford を確認推奨）。
  */
 export function applyAction(
   game: GameState,
@@ -42,6 +60,7 @@ export function applyAction(
   if (!canAfford(game, kind)) return game
   const ds = game.districts[districtId]
   if (!ds) return game
+  if (!canActivateAction(game, districtId, kind, model)) return game
 
   const a = ACTIONS[kind]
   const fx = model.params.actionEffects
@@ -54,6 +73,44 @@ export function applyAction(
     case 'electric-fence':
       next = { ...ds, electricFenceTurns: fx.electricFenceTurns }
       break
+    case 'attractant-removal':
+      next = {
+        ...ds,
+        intervention: {
+          satoyama: fx.attractantSatoyamaIntervention,
+          urban: fx.attractantUrbanIntervention,
+        },
+        interventionTurns: fx.attractantInterventionTurns,
+      }
+      break
+    case 'box-trap':
+      next = { ...ds, trapTurns: fx.trapTurns }
+      break
+    case 'patrol':
+      next = { ...ds, patrolTurns: fx.patrolTurns }
+      break
+    case 'hazing': {
+      const cut = fx.hazingBaseFraction * Math.pow(fx.hazingDecayBase, ds.hazingHabituation)
+      next = {
+        ...ds,
+        satoyamaEncounterRate: ds.satoyamaEncounterRate * (1 - cut),
+        urbanEncounterRate: ds.urbanEncounterRate * (1 - cut),
+        hazingHabituation: ds.hazingHabituation + 1,
+      }
+      break
+    }
+    case 'emergency-shooting': {
+      const shotDistrict: DistrictState = {
+        ...ds,
+        urbanEncounterRate: ds.urbanEncounterRate * fx.emergencyUrbanFactor,
+      }
+      return {
+        ...game,
+        instructionPoints: game.instructionPoints - a.instructionPointCost,
+        dissatisfaction: clamp(game.dissatisfaction + fx.emergencyDissatisfaction, 0, 100),
+        districts: { ...game.districts, [districtId]: shotDistrict },
+      }
+    }
   }
 
   return {
@@ -67,7 +124,7 @@ export function applyAction(
 // §5.3 遭遇フェーズ
 // ───────────────────────────────────────────────────────────
 
-export type EncounterEventKind = 'satoyama' | 'urban' | 'fence-block'
+export type EncounterEventKind = 'satoyama' | 'urban' | 'fence-block' | 'trap-capture'
 
 export interface EncounterEvent {
   districtId: DistrictId
@@ -124,6 +181,7 @@ export function projectEncounterRates(
       humanIntervention: ds.intervention.satoyama,
       mountainInfluxFactor: influxFactor,
       neighborInfluxFactor: influxFactor,
+      forestInfluxFactor: ds.forestInfluxFactor,
     })
     newSatoyama[def.id] = clamp(prevSatoyama[def.id] + rise, 0, 100)
   }
@@ -172,13 +230,31 @@ export function resolveEncounterPhase(
 
     const fenceActive = ds.electricFenceTurns > 0
     let fenceConsumed = false
+    const trapActive = ds.trapTurns > 0
+    let trapConsumed = false
+
+    const nextInterventionTurns = Math.max(0, ds.interventionTurns - 1)
+    const interventionActive = nextInterventionTurns > 0
+    const nextIntervention = interventionActive ? ds.intervention : { satoyama: 0, urban: 0 }
+
+    const patrolActive = ds.patrolTurns > 0
+    const dmgFactor = patrolActive ? model.params.actionEffects.patrolDamageFactor : 1
 
     const satoyamaHit = rng() < model.occurrenceProbability(satoyama)
     const urbanHit = rng() < model.occurrenceProbability(urban)
 
-    // 里山出現
+    // 里山出現（箱わなが電気柵より優先。捕獲成立なら電気柵は消費しない）
     if (satoyamaHit) {
-      if (fenceActive) {
+      if (trapActive) {
+        trapConsumed = true // 箱わな優先：捕獲。電気柵は温存
+        events.push({
+          districtId: def.id,
+          kind: 'trap-capture',
+          message: `${def.name}：箱わなで捕獲（人里に出る前に確保）`,
+          dissatisfactionDelta: 0,
+          rate: satoyama,
+        })
+      } else if (fenceActive) {
         fenceConsumed = true // §5.2-3 電気柵が1度だけ無効化。発揮したら即失効
         events.push({
           districtId: def.id,
@@ -188,12 +264,13 @@ export function resolveEncounterPhase(
           rate: satoyama,
         })
       } else {
-        dissatisfaction += model.params.damage.satoyama
+        const dmg = model.params.damage.satoyama * dmgFactor
+        dissatisfaction += dmg
         events.push({
           districtId: def.id,
           kind: 'satoyama',
-          message: `${def.name}：里山でクマ出没（不満度+${model.params.damage.satoyama}）`,
-          dissatisfactionDelta: model.params.damage.satoyama,
+          message: `${def.name}：里山でクマ出没（不満度+${dmg}）`,
+          dissatisfactionDelta: dmg,
           rate: satoyama,
         })
       }
@@ -201,12 +278,13 @@ export function resolveEncounterPhase(
 
     // 市街出現
     if (urbanHit) {
-      dissatisfaction += model.params.damage.urban
+      const dmgU = model.params.damage.urban * dmgFactor
+      dissatisfaction += dmgU
       events.push({
         districtId: def.id,
         kind: 'urban',
-        message: `${def.name}：市街地でクマ出没（不満度+${model.params.damage.urban}）`,
-        dissatisfactionDelta: model.params.damage.urban,
+        message: `${def.name}：市街地でクマ出没（不満度+${dmgU}）`,
+        dissatisfactionDelta: dmgU,
         rate: urban,
       })
     }
@@ -222,7 +300,19 @@ export function resolveEncounterPhase(
       mowingBlockTurns: Math.max(0, ds.mowingBlockTurns - 1),
       pendingDecaySatoyama: satoyamaHit,
       pendingDecayUrban: urbanHit,
-      // 介入項は保留中（駆動源なし）。初期値のまま引き継ぐ。
+      // 誘引物の除去：残ターンを消費し、0になったら中立(0,0)へ戻す。
+      interventionTurns: nextInterventionTurns,
+      intervention: nextIntervention,
+      // 箱わな：捕獲成立で即0（消費）。未発揮なら毎ターン減る。
+      trapTurns: trapConsumed ? 0 : Math.max(0, ds.trapTurns - 1),
+      // 捕獲成立で山林直接流入(第1項)の恒久係数を下限クランプしつつ下げる。
+      forestInfluxFactor: trapConsumed
+        ? Math.max(model.params.actionEffects.trapForestFloor, ds.forestInfluxFactor * model.params.actionEffects.trapForestFactor)
+        : ds.forestInfluxFactor,
+      // パトロール：毎ターン減って失効。
+      patrolTurns: Math.max(0, ds.patrolTurns - 1),
+      // 追い払い：慣れ(habituation)は使わなければ毎ターン少しずつ回復する。
+      hazingHabituation: Math.max(0, ds.hazingHabituation - model.params.actionEffects.hazingRecovery),
     }
   }
 

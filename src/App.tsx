@@ -437,10 +437,7 @@ function DistrictDetail() {
 }
 
 /**
- * §5.2 施策バー。選択中の地区に対し予約／解除をトグルする（対策フェーズのみ有効）。
- * ボタンは折り返さず横1段のレール（overflow-x-auto）にして、施策が増えてもパネルが縦に伸びない。
- * レールは縦方向もクリップするため、詳細カードはレールの外（ラッパー直下の絶対配置）に
- * 1枚だけ置き、ホバー／フォーカス中の施策の内容を上方向に表示する（クリップ回避）。
+ * 施策バー。選択中の地区に対し予約／解除をトグルする（対策フェーズのみ有効）。
  */
 function ActionBar() {
   const toggleAction = useGameStore((s) => s.toggleAction)
@@ -463,8 +460,6 @@ function ActionBar() {
         {ACTION_LIST.map((a) => {
           const staged = isStaged(selectedId, a.kind)
           const enabled = canStage(a.kind)
-          // 施策は一律1指示なのでコストは表示しない。バフ等で0になったときだけ「無料」を明示。
-          const free = a.instructionPointCost === 0
           return (
             <button
               key={a.kind}
@@ -486,7 +481,12 @@ function ActionBar() {
                 {a.name}
               </span>
               <span className="text-xs text-risk-safe">{a.effectLabel}</span>
-              {free && <span className="text-xs font-bold text-risk-safe">無料</span>}
+              {a.instructionPointCost === 0 && (
+                <span className="text-xs font-bold text-risk-safe">無料</span>
+              )}
+              {a.instructionPointCost >= 2 && (
+                <span className="text-xs font-bold text-amber-300">指示{a.instructionPointCost}</span>
+              )}
             </button>
           )
         })}

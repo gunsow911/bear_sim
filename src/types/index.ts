@@ -75,8 +75,7 @@ export interface DistrictState {
   urbanEncounterRate: number
   /**
    * §4.3/§4.4 人間の介入値。負で遭遇率を抑制する上昇式の項。
-   * 里山側（加算項）・市街側（乗算係数）で別管理する。
-   * 現在は駆動源(施策・ドリフト)を外し、初期値(satoyama=0 / urban=1)で保留＝中立。
+   * 里山・市街とも加算項（負で抑制、中立0）。
    */
   intervention: {
     satoyama: number
@@ -89,6 +88,16 @@ export interface DistrictState {
   electricFenceTurns: number
   /** §5.2-1 広域草刈りによる山林→里山流入カットの残りターン数。 */
   mowingBlockTurns: number
+  /** 誘引物除去の持続残ターン（>0で intervention が有効）。0で intervention を中立へ戻す。 */
+  interventionTurns: number
+  /** 箱わな待ち伏せの残ターン（>0で有効）。捕獲成立で即0。 */
+  trapTurns: number
+  /** 山林直接流入(第1項)の恒久係数（初期1.0）。箱わな捕獲成立で ×trapForestFactor（下限クランプ）。 */
+  forestInfluxFactor: number
+  /** パトロール巡回の残ターン（>0の間、出没時の不満加算を軽減）。 */
+  patrolTurns: number
+  /** 追い払いの慣れ（隠し。使用で増え、不使用で回復。大きいほど追い払いが効かない）。 */
+  hazingHabituation: number
   /** 今週出没したため、翌週開始時に里山遭遇率を減衰させる（遭遇補正の遅延適用）。 */
   pendingDecaySatoyama: boolean
   /** 今週出没したため、翌週開始時に市街遭遇率を減衰させる。 */
@@ -179,6 +188,11 @@ export interface GameMessage {
 export type ActionKind =
   | 'mowing' // 広域草刈り（数ターン流入遮断）
   | 'electric-fence' // 電気柵（里山遭遇を1度無効化）
+  | 'attractant-removal' // 誘引物の除去（数ターン里山・市街の上昇を抑制）
+  | 'box-trap' // 箱わなによる捕獲（待ち伏せ→捕獲で里山出没を無効化し、山林直接流入を恒久ダウン）
+  | 'emergency-shooting' // 緊急銃猟（市街決壊時のみ発動可。市街遭遇率を即時に叩き落とすが不満が少し上がる）
+  | 'patrol' // パトロール（巡回中の地区は出没時の不満加算を軽減）
+  | 'hazing' // 追い払い（即時に遭遇率を薄く下げるが、繰り返すほど慣れて効果が逓減）
 
 /** §5.2 対策コマンドの定義。 */
 export interface ActionDef {
