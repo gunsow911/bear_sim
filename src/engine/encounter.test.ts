@@ -35,14 +35,19 @@ describe('urbanRise（決壊ソフト化 + 市街直接侵入）', () => {
     expect(high).toBeGreaterThan(mid)
   })
 
-  it('大きな超過では決壊項が支配的（従来どおり線形に漸近）', () => {
-    // s≫閾値では softplus(s−50)≈(s−50)。直接項ぶんを差し引くと従来式に一致。
+  it('大きな超過では決壊項が支配的（線形の overflow にわずか上から漸近）', () => {
+    // s≫閾値では softplus(s−閾値)≈(s−閾値)。直接項ぶんを差し引くと決壊項の線形近似に迫る
+    // （softplus は max(0,·) 以上なので、線形近似をわずかに上回る）。閾値は定数から取る。
     const s = 90
-    const d = district(0.42)
+    const ratio = 0.42
+    const d = district(ratio)
+    const c = DEFAULT_COEFFICIENTS
     const rise = urbanRise({ district: d, satoyamaEncounterRate: s, humanIntervention: 1 })
-    const directTerm = DEFAULT_COEFFICIENTS.urbanDirectScale * s * (1 - 0.42)
-    const breachApprox = (DEFAULT_COEFFICIENTS.urbanBreachScale * (s - 50)) / 0.42
-    expect(rise - directTerm).toBeCloseTo(breachApprox, 1)
+    const directTerm = c.urbanDirectScale * s * (1 - ratio)
+    const breachLinear = (c.urbanBreachScale * (s - c.breachThreshold)) / ratio
+    const breachActual = rise - directTerm
+    expect(breachActual).toBeGreaterThanOrEqual(breachLinear)
+    expect(breachActual).toBeLessThan(breachLinear * 1.05)
   })
 
   it('urbanBreachScale=0 でも直接項だけで市街は上がる（決壊非依存の経路）', () => {
@@ -121,26 +126,29 @@ describe('satoyamaRise（隣接里山遭遇率の流入補正）', () => {
     expect(withoutRatios).toBeCloseTo(asUpstream)
   })
 
-  it('blockMountainInflux で山林→里山の直接流入(第1項)が断たれる', () => {
-    const mt = {
-      id: 'm',
-      name: 'M',
-      baseDensity: 9,
-      satoyamaRatio: 0.9,
-      mountainAdjacent: true,
-      features: [],
-      adjacencies: [],
+  it('mountainInfluxFactor で第1項が線形に弱まる（0.5=半減、0=遮断）', () => {
+    const mt: DistrictDef = {
+      id: 'm', name: 'M', baseDensity: 9, satoyamaRatio: 0.9,
+      mountainAdjacent: true, features: [], adjacencies: [],
     }
     const base = satoyamaRise({ district: mt, activeness: 50, neighborSatoyamaRates: {}, humanIntervention: 0 })
-    const blocked = satoyamaRise({
-      district: mt,
-      activeness: 50,
-      neighborSatoyamaRates: {},
-      humanIntervention: 0,
-      blockMountainInflux: true,
-    })
+    const half = satoyamaRise({ district: mt, activeness: 50, neighborSatoyamaRates: {}, humanIntervention: 0, mountainInfluxFactor: 0.5 })
+    const cut = satoyamaRise({ district: mt, activeness: 50, neighborSatoyamaRates: {}, humanIntervention: 0, mountainInfluxFactor: 0 })
     expect(base).toBeGreaterThan(0)
-    expect(blocked).toBe(0)
+    expect(half).toBeCloseTo(base * 0.5)
+    expect(cut).toBe(0)
+  })
+
+  it('neighborInfluxFactor で第2項(隣接移動)が線形に弱まる（0.5=半減）', () => {
+    // mountainAdjacent=false → 第1項なし。第2項のみ。neighborInfluxFactor で半減する。
+    const c: DistrictDef = {
+      id: 'c', name: 'C', baseDensity: 3, satoyamaRatio: 0.5, mountainAdjacent: false,
+      features: [], adjacencies: [{ to: 'n', features: ['green-corridor'] }],
+    }
+    const full = satoyamaRise({ district: c, activeness: 50, neighborSatoyamaRates: { n: 80 }, humanIntervention: 0 })
+    const mowed = satoyamaRise({ district: c, activeness: 50, neighborSatoyamaRates: { n: 80 }, humanIntervention: 0, neighborInfluxFactor: 0.5 })
+    expect(full).toBeGreaterThan(0)
+    expect(mowed).toBeCloseTo(full * 0.5)
   })
 
   it('活発度0でも山林直接流入(第1項)は途絶えない（下限クランプ）', () => {
@@ -154,8 +162,8 @@ describe('satoyamaRise（隣接里山遭遇率の流入補正）', () => {
       DEFAULT_COEFFICIENTS.scale * (DEFAULT_COEFFICIENTS.minForestActiveness * 9) / 0.9,
     )
     expect(zero).toBeGreaterThan(0)
-    // 遮断中は活発度に関係なく0
-    const blocked = satoyamaRise({ district: mt, activeness: 0, neighborSatoyamaRates: {}, humanIntervention: 0, blockMountainInflux: true })
+    // 完全遮断(factor=0)なら活発度に関係なく0
+    const blocked = satoyamaRise({ district: mt, activeness: 0, neighborSatoyamaRates: {}, humanIntervention: 0, mountainInfluxFactor: 0 })
     expect(blocked).toBe(0)
   })
 

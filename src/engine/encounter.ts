@@ -62,14 +62,14 @@ export const DEFAULT_COEFFICIENTS: ModelCoefficients = {
   // 里山率（0〜1）が分母のため、比(0〜∞)時代より分母が小さい。scale を下げて調整。
   scale: 0.1,
   minForestActiveness: 10, // 活発度0でも山林直接流入が残るベースライン。⚠️暫定値・要チューニング
-  breachThreshold: 50,
-  urbanBreachScale: 0.35, // 市街決壊を緩和（従来=1.0は急峻すぎた）
+  breachThreshold: 30,
+  urbanBreachScale: 0.5, // 市街決壊を緩和（従来=1.0は急峻すぎた）
   breachSoftness: 8, // 決壊閾値前後を softplus で滑らかに（角の二段挙動を解消）
-  urbanDirectScale: 0.05, // 市街度に比例した直接侵入。⚠️暫定値・要チューニング
+  urbanDirectScale: 0.3, // 市街度に比例した直接侵入。⚠️暫定値・要チューニング
   baseMobility: 0.2,
   // 方向バイアス導入で逆流ぶんが減るため、対称時代(0.4)より引き上げて総流入を補償。
   // ⚠️ 暫定値。挙動を見て要チューニング。
-  neighborInfluxScale: 0.6,
+  neighborInfluxScale: 0.8,
   backflowScale: 0.2, // 上流→下流は全量、下流→上流の逆流は 0.2 に弱める（ソフト方向バイアス）
   waterBonus: 0.15,
   greenCorridorBonus: 0.25,
@@ -117,10 +117,15 @@ export interface SatoyamaRiseInput {
   /** §4.3 人間の介入(里山)。負で抑制。 */
   humanIntervention: number
   /**
-   * true のとき第1項（山林→里山の直接流入）を 0 にする。
-   * 広域草刈り（けものみち遮断）が有効な間に使う。
+   * 第1項（山林→里山の直接流入）に掛ける係数（0〜1、既定1）。
+   * 広域草刈り中は 1−カット率（例 0.5）を渡して流入を弱める。0 で完全遮断。
    */
-  blockMountainInflux?: boolean
+  mountainInfluxFactor?: number
+  /**
+   * 第2項（隣接地区からの移動流入）に掛ける係数（0〜1、既定1）。
+   * 広域草刈り中は 1−カット率（例 0.5）を渡して地区間の移動も弱める。
+   */
+  neighborInfluxFactor?: number
   coeff?: ModelCoefficients
 }
 
@@ -143,16 +148,16 @@ export function satoyamaRise(input: SatoyamaRiseInput): number {
     neighborSatoyamaRates,
     neighborSatoyamaRatios,
     humanIntervention,
-    blockMountainInflux,
+    mountainInfluxFactor = 1,
+    neighborInfluxFactor = 1,
   } = input
 
-  // 第1項：山林からの直接流入（山林隣接地区のみ。草刈り遮断中は 0）。
+  // 第1項：山林からの直接流入（山林隣接地区のみ）。mountainInfluxFactor で弱める（草刈り＝0.5）。
   // 活発度は下限 minForestActiveness でクランプ：0まで抑制されてもベースラインは途絶えない。
   const forestActiveness = Math.max(activeness, coeff.minForestActiveness)
-  const directInflux =
-    district.mountainAdjacent && !blockMountainInflux
-      ? coeff.scale * ((forestActiveness * district.baseDensity) / district.satoyamaRatio)
-      : 0
+  const directInflux = district.mountainAdjacent
+    ? coeff.scale * ((forestActiveness * district.baseDensity) / district.satoyamaRatio) * mountainInfluxFactor
+    : 0
 
   // 第2項：隣接地区からの侵入（移動しやすさ × 隣接の里山遭遇率の総和）に流入補正を掛ける。
   // ソフト方向バイアス：上流(里山率≧自地区)は全量、下流(里山率<自地区)からの逆流は backflowScale 倍。
@@ -167,8 +172,10 @@ export function satoyamaRise(input: SatoyamaRiseInput): number {
     neighborInflux += computeMobility(adj, coeff) * neighborRate * direction
   }
 
-  // 第3項：人間の介入
-  return directInflux + coeff.neighborInfluxScale * neighborInflux + humanIntervention
+  // 第3項：人間の介入。第2項は neighborInfluxFactor で弱める（草刈り＝0.5）。
+  return (
+    directInflux + coeff.neighborInfluxScale * neighborInflux * neighborInfluxFactor + humanIntervention
+  )
 }
 
 /** §4.4 市街遭遇率の上昇度を計算するための入力。 */

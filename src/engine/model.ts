@@ -31,8 +31,12 @@ export interface RiskModelParams {
   damage: { satoyama: number; urban: number }
   /** §5.2 対策コマンドの効果量。 */
   actionEffects: {
-    /** 広域草刈り：流入を遮断するターン数。 */
+    /** 広域草刈り：山林→里山流入をカットするターン数。 */
     mowingBlockTurns: number
+    /** 広域草刈り：流入のカット率（0〜1）。山林直接流入(第1項)・隣接移動(第2項)の両方に適用。 */
+    mowingInfluxCutRate: number
+    /** 電気柵：有効ターン数（この間の里山遭遇を1度だけ無効化。発揮で即失効）。 */
+    electricFenceTurns: number
   }
 }
 
@@ -77,6 +81,8 @@ export const defaultRiskModel: RiskModel = createRiskModel('default', DEFAULT_CO
   damage: { satoyama: 10, urban: 30 },
   actionEffects: {
     mowingBlockTurns: 2,
+    mowingInfluxCutRate: 0.5, // 山林→里山流入を50%カット
+    electricFenceTurns: 4, // 電気柵は4ターン有効
   },
 })
 

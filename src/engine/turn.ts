@@ -52,7 +52,7 @@ export function applyAction(
       next = { ...ds, mowingBlockTurns: fx.mowingBlockTurns }
       break
     case 'electric-fence':
-      next = { ...ds, electricFenceActive: true }
+      next = { ...ds, electricFenceTurns: fx.electricFenceTurns }
       break
   }
 
@@ -113,17 +113,17 @@ export function projectEncounterRates(
   const newSatoyama: Record<DistrictId, number> = {}
   for (const def of stage.districts) {
     const ds = game.districts[def.id]
-    // 広域草刈りが有効な間は流入を遮断（時間稼ぎ）。
-    // 山林→里山の直接流入(第1項)・隣接流入(第2項)の両方を止める。
-    const blocked = ds.mowingBlockTurns > 0
-    const neighborRates = blocked ? {} : prevSatoyama
+    // 広域草刈りが有効な間は、山林直接流入(第1項)・隣接移動(第2項)の両方をカット率ぶん弱める。
+    const mowing = ds.mowingBlockTurns > 0
+    const influxFactor = mowing ? 1 - model.params.actionEffects.mowingInfluxCutRate : 1
     const rise = model.satoyamaRise({
       district: def,
       activeness: game.activeness,
-      neighborSatoyamaRates: neighborRates,
+      neighborSatoyamaRates: prevSatoyama,
       neighborSatoyamaRatios: satoyamaRatios,
       humanIntervention: ds.intervention.satoyama,
-      blockMountainInflux: blocked,
+      mountainInfluxFactor: influxFactor,
+      neighborInfluxFactor: influxFactor,
     })
     newSatoyama[def.id] = clamp(prevSatoyama[def.id] + rise, 0, 100)
   }
@@ -170,7 +170,8 @@ export function resolveEncounterPhase(
     const satoyama = projected[def.id].satoyama
     const urban = projected[def.id].urban
 
-    let fenceActive = ds.electricFenceActive
+    const fenceActive = ds.electricFenceTurns > 0
+    let fenceConsumed = false
 
     const satoyamaHit = rng() < model.occurrenceProbability(satoyama)
     const urbanHit = rng() < model.occurrenceProbability(urban)
@@ -178,7 +179,7 @@ export function resolveEncounterPhase(
     // 里山出現
     if (satoyamaHit) {
       if (fenceActive) {
-        fenceActive = false // §5.2-3 電気柵が1度だけ無効化
+        fenceConsumed = true // §5.2-3 電気柵が1度だけ無効化。発揮したら即失効
         events.push({
           districtId: def.id,
           kind: 'fence-block',
@@ -216,7 +217,8 @@ export function resolveEncounterPhase(
       ...ds,
       satoyamaEncounterRate: satoyama,
       urbanEncounterRate: urban,
-      electricFenceActive: fenceActive,
+      // 発揮したら即0（消滅）。未発揮なら毎ターン減って4Tで失効。
+      electricFenceTurns: fenceConsumed ? 0 : Math.max(0, ds.electricFenceTurns - 1),
       mowingBlockTurns: Math.max(0, ds.mowingBlockTurns - 1),
       pendingDecaySatoyama: satoyamaHit,
       pendingDecayUrban: urbanHit,

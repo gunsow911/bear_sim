@@ -413,17 +413,17 @@ function DistrictDetail() {
           <div className="flex flex-col justify-center text-sm">
             <p className="mb-1 text-xs text-slate-400">状態</p>
             <div className="flex flex-wrap gap-1">
-              {ds.electricFenceActive && (
+              {ds.electricFenceTurns > 0 && (
                 <span className="rounded bg-risk-safe/20 px-2 py-0.5 text-xs text-risk-safe">
-                  ⚡ 電気柵 有効
+                  ⚡ 電気柵 有効 残り{ds.electricFenceTurns}T
                 </span>
               )}
               {ds.mowingBlockTurns > 0 && (
                 <span className="rounded bg-risk-warn/20 px-2 py-0.5 text-xs text-risk-warn">
-                  ✂️ 草刈り遮断 残り{ds.mowingBlockTurns}T
+                  ✂️ 草刈り 残り{ds.mowingBlockTurns}T
                 </span>
               )}
-              {!ds.electricFenceActive && ds.mowingBlockTurns === 0 && (
+              {ds.electricFenceTurns === 0 && ds.mowingBlockTurns === 0 && (
                 <span className="text-xs text-slate-500">対策の効果なし</span>
               )}
             </div>

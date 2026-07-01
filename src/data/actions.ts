@@ -12,16 +12,16 @@ export const ACTIONS: Record<ActionKind, ActionDef> = {
     name: '広域草刈り',
     instructionPointCost: 1,
     flavor:
-      '集落と山林の境界を一斉に刈り払い、見通しを確保。やぶに隠れて里へ下りる"けものみち"をしばらく断ちます。',
-    effectLabel: '山林・隣接からのこの地区への流入をせき止める',
+      '集落と山林の境界を一斉に刈り払い、見通しを確保。やぶに隠れて里へ下りる"けものみち"を細くし、山林からも隣接地区からもこの地区への流入を鈍らせます。',
+    effectLabel: 'この地区への流入を約半分に抑える',
   },
   'electric-fence': {
     kind: 'electric-fence',
     name: '電気柵の設置',
     instructionPointCost: 1,
     flavor:
-      '農地のまわりに侵入防止柵を張りめぐらせます。次に里山から下りてくる出没を、一度だけ確実に食い止めます。',
-    effectLabel: 'この地区の里山の出没を1回だけ防ぐ',
+      '農地のまわりに侵入防止柵を張りめぐらせます。里山から下りてくる出没を一度だけ確実に食い止めます。',
+    effectLabel: '数ターン以内の里山の出没を1回だけ防ぐ',
   },
 }
 

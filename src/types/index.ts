@@ -82,9 +82,12 @@ export interface DistrictState {
     satoyama: number
     urban: number
   }
-  /** §5.2-3 電気柵による「里山遭遇の1回無効化」が有効か。 */
-  electricFenceActive: boolean
-  /** §5.2-1 広域草刈りによる流入遮断の残りターン数。 */
+  /**
+   * §5.2-3 電気柵の残り有効ターン数（>0 で有効）。
+   * 里山遭遇を1度だけ無効化し、発揮すると即座に0（消滅）。未発揮なら毎ターン減って失効。
+   */
+  electricFenceTurns: number
+  /** §5.2-1 広域草刈りによる山林→里山流入カットの残りターン数。 */
   mowingBlockTurns: number
   /** 今週出没したため、翌週開始時に里山遭遇率を減衰させる（遭遇補正の遅延適用）。 */
   pendingDecaySatoyama: boolean

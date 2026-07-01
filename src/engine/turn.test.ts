@@ -34,7 +34,7 @@ const dstate = (over: Partial<DistrictState> = {}): DistrictState => ({
   satoyamaEncounterRate: 0,
   urbanEncounterRate: 0,
   intervention: { satoyama: 0, urban: 1 },
-  electricFenceActive: false,
+  electricFenceTurns: 0,
   mowingBlockTurns: 0,
   pendingDecaySatoyama: false,
   pendingDecayUrban: false,
@@ -70,8 +70,8 @@ describe('projectEncounterRates', () => {
     }
   })
 
-  it('広域草刈りを適用すると隣接流入が断たれ予測里山が下がる', () => {
-    // city は山林非隣接なので里山遭遇率の上昇は隣接(mt)流入のみ。草刈りで遮断され下がる。
+  it('広域草刈りは隣接移動(第2項)も弱める（山林非隣接地区でも予測里山が下がる）', () => {
+    // city は山林非隣接なので上昇は隣接(mt)流入のみ。草刈りで第2項が半減し下がる。
     const game = makeGame(
       { satoyamaEncounterRate: 80 },
       { satoyamaEncounterRate: 30 },
@@ -82,12 +82,28 @@ describe('projectEncounterRates', () => {
     expect(withMow).toBeLessThan(base)
   })
 
-  it('広域草刈りは山林直接流入(第1項)も断つ（mountain地区の予測里山が下がる）', () => {
+  it('広域草刈りは山林直接流入(第1項)を弱める（mountain地区の予測里山が下がるが0にはしない）', () => {
     const game = makeGame({ satoyamaEncounterRate: 40 }, { satoyamaEncounterRate: 0 })
     const base = projectEncounterRates(game, stage, defaultRiskModel).mt.satoyama
     const mowed = applyAction(game, 'mt', 'mowing', defaultRiskModel)
     const after = projectEncounterRates(mowed, stage, defaultRiskModel).mt.satoyama
     expect(after).toBeLessThan(base)
+  })
+
+  it('電気柵は4T有効で、里山出没を1度防ぐと即失効する', () => {
+    // 必ず出没する乱数(rng=()=>0)。mt に電気柵を張り、1度は防いで柵は0に。
+    const game = applyAction(makeGame({ satoyamaEncounterRate: 90 }, {}), 'mt', 'electric-fence', defaultRiskModel)
+    expect(game.districts.mt.electricFenceTurns).toBe(4)
+    const r1 = resolveEncounterPhase(game, stage, defaultRiskModel, () => 0)
+    expect(r1.events.some((e) => e.districtId === 'mt' && e.kind === 'fence-block')).toBe(true)
+    expect(r1.game.districts.mt.electricFenceTurns).toBe(0) // 発揮で即失効
+  })
+
+  it('電気柵は出没しなければ毎ターン減って4Tで失効する', () => {
+    // 出没しない乱数(rng=()=>1)で1ターン解決すると 4→3 に減る。
+    const game = applyAction(makeGame({ satoyamaEncounterRate: 10 }, {}), 'mt', 'electric-fence', defaultRiskModel)
+    const after = resolveEncounterPhase(game, stage, defaultRiskModel, () => 1).game
+    expect(after.districts.mt.electricFenceTurns).toBe(3)
   })
 
   it('介入項は毎ターン変化しない（放置ドリフト廃止・保留中）', () => {
