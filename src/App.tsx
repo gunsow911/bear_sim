@@ -7,7 +7,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react'
-import { ActionDetailCard } from '@/components/ActionDetailCard'
+import { ActionHelpModal } from '@/components/ActionHelpModal'
 import { AgendaCards } from '@/components/AgendaCards'
 import { EncounterReveal } from '@/components/EncounterReveal'
 import { EventModal } from '@/components/EventModal'
@@ -20,7 +20,7 @@ import { useGameStore } from '@/store/gameStore'
 import { applyTheme, DEFAULT_THEME } from '@/theme/themes'
 import { applyAction, projectEncounterRates } from '@/engine/turn'
 import { activeRiskModel } from '@/engine/model'
-import type { ActionKind, DistrictFeature } from '@/types'
+import type { DistrictFeature } from '@/types'
 
 const FEATURE_LABEL: Record<DistrictFeature, { icon: string; name: string }> = {
   water: { icon: '🌊', name: '水系接続' },
@@ -445,59 +445,50 @@ function ActionBar() {
   const isStaged = useGameStore((s) => s.isStaged)
   const selectedId = useGameStore((s) => s.selectedDistrictId)
   const game = useGameStore((s) => s.game)
-  // ホバー／フォーカス中の施策（詳細カード表示用）。
-  const [activeKind, setActiveKind] = useState<ActionKind | null>(null)
+  const openActionHelp = useGameStore((s) => s.openActionHelp)
   if (!game || !selectedId) return null
 
-  const activeAction = activeKind ? ACTIONS[activeKind] : null
-  // 別ボタンへ移った時の取りこぼしを防ぐため、現在表示中の施策のときだけ解除する。
-  const clearIf = (kind: ActionKind) => setActiveKind((k) => (k === kind ? null : k))
-
   return (
-    <div className="relative border-t border-panel-border pt-3">
-      {/* 横スクロールのレール（1段固定）。ボタンは固定幅で縮まずに横へ流れる。 */}
+    <div className="border-t border-panel-border pt-3">
       <div className="flex gap-2 overflow-x-auto pb-1">
         {ACTION_LIST.map((a) => {
           const staged = isStaged(selectedId, a.kind)
           const enabled = canStage(a.kind)
           return (
-            <button
-              key={a.kind}
-              disabled={!enabled}
-              aria-pressed={staged}
-              onClick={() => toggleAction(a.kind)}
-              onMouseEnter={() => setActiveKind(a.kind)}
-              onMouseLeave={() => clearIf(a.kind)}
-              onFocus={() => setActiveKind(a.kind)}
-              onBlur={() => clearIf(a.kind)}
-              className={`flex w-44 shrink-0 flex-col rounded-lg border px-3 py-2 text-left text-sm transition disabled:cursor-not-allowed disabled:opacity-40 ${
-                staged
-                  ? 'border-risk-safe bg-panel-light ring-2 ring-risk-safe'
-                  : 'border-panel-border bg-panel hover:bg-panel-light'
-              }`}
-            >
-              <span className="font-bold">
-                {staged ? '✓ ' : ''}
-                {a.name}
-              </span>
-              <span className="text-xs text-risk-safe">{a.effectLabel}</span>
-              {a.instructionPointCost === 0 && (
-                <span className="text-xs font-bold text-risk-safe">無料</span>
-              )}
-              {a.instructionPointCost >= 2 && (
-                <span className="text-xs font-bold text-amber-300">指示{a.instructionPointCost}</span>
-              )}
-            </button>
+            <div key={a.kind} className="relative shrink-0">
+              <button
+                disabled={!enabled}
+                aria-pressed={staged}
+                onClick={() => toggleAction(a.kind)}
+                className={`flex w-44 flex-col rounded-lg border px-3 py-2 pr-7 text-left text-sm transition disabled:cursor-not-allowed disabled:opacity-40 ${
+                  staged
+                    ? 'border-risk-safe bg-panel-light ring-2 ring-risk-safe'
+                    : 'border-panel-border bg-panel hover:bg-panel-light'
+                }`}
+              >
+                <span className="font-bold">
+                  {staged ? '✓ ' : ''}
+                  {a.name}
+                </span>
+                <span className="text-xs text-risk-safe">{a.effectLabel}</span>
+                {a.instructionPointCost === 0 && (
+                  <span className="text-xs font-bold text-risk-safe">無料</span>
+                )}
+                {a.instructionPointCost >= 2 && (
+                  <span className="text-xs font-bold text-amber-300">指示{a.instructionPointCost}</span>
+                )}
+              </button>
+              <button
+                aria-label={`${a.name}の説明`}
+                onClick={() => openActionHelp(a.kind)}
+                className="absolute right-1 top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full border border-panel-border bg-panel text-xs text-slate-300 transition hover:bg-panel-light hover:text-slate-100"
+              >
+                ？
+              </button>
+            </div>
           )
         })}
       </div>
-      {/* 詳細カード：レールの外・絶対配置で上方向に開く（横スクロールにクリップされない）。
-          タッチ端末（hover 不可）はボタンの常時表示（効果ラベル＋コスト）でカバー。 */}
-      {activeAction && (
-        <div className="pointer-events-none absolute bottom-full left-0 z-[600] mb-2">
-          <ActionDetailCard action={activeAction} />
-        </div>
-      )}
     </div>
   )
 }
@@ -636,6 +627,7 @@ export default function App() {
       {game ? <Dashboard /> : <StartScreen />}
       <EventModal />
       <MessageModal />
+      <ActionHelpModal />
     </div>
   )
 }
