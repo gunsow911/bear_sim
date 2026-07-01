@@ -192,3 +192,13 @@ describe('誘引物の除去', () => {
     expect(g.districts.mt.interventionTurns).toBe(0)
   })
 })
+
+describe('パトロール', () => {
+  it('巡回中の地区は出没時の不満加算が軽減される', () => {
+    const patrolled = applyAction(makeGame({ satoyamaEncounterRate: 90 }, {}), 'mt', 'patrol', defaultRiskModel)
+    expect(patrolled.districts.mt.patrolTurns).toBe(defaultRiskModel.params.actionEffects.patrolTurns)
+    const r = resolveEncounterPhase(patrolled, stage, defaultRiskModel, () => 0) // 必ず出没
+    const ev = r.events.find((e) => e.districtId === 'mt' && e.kind === 'satoyama')
+    expect(ev?.dissatisfactionDelta).toBeCloseTo(defaultRiskModel.params.damage.satoyama * 0.5)
+  })
+})

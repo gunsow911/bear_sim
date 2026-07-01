@@ -50,6 +50,15 @@ export const ACTIONS: Record<ActionKind, ActionDef> = {
     effectLabel: '市街に出た個体を緊急排除する（住民は動揺する）',
     realTerms: ['緊急銃猟'],
   },
+  patrol: {
+    kind: 'patrol',
+    name: 'パトロール',
+    instructionPointCost: 1,
+    flavor:
+      'クマレンジャーと鳥獣専門指導員がこの地区を巡回します。すぐ駆けつける体制が保たれ、万一クマが出ても住民は落ち着いていられます。',
+    effectLabel: 'しばらくの間、この地区で出没が起きても住民の不安が広がりにくくなる',
+    realTerms: ['クマレンジャー'],
+  },
 }
 
 export const ACTION_LIST: ActionDef[] = Object.values(ACTIONS)

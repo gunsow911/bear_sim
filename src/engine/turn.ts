@@ -86,6 +86,9 @@ export function applyAction(
     case 'box-trap':
       next = { ...ds, trapTurns: fx.trapTurns }
       break
+    case 'patrol':
+      next = { ...ds, patrolTurns: fx.patrolTurns }
+      break
     case 'emergency-shooting': {
       const shotDistrict: DistrictState = {
         ...ds,
@@ -224,6 +227,9 @@ export function resolveEncounterPhase(
     const interventionActive = nextInterventionTurns > 0
     const nextIntervention = interventionActive ? ds.intervention : { satoyama: 0, urban: 0 }
 
+    const patrolActive = ds.patrolTurns > 0
+    const dmgFactor = patrolActive ? model.params.actionEffects.patrolDamageFactor : 1
+
     const satoyamaHit = rng() < model.occurrenceProbability(satoyama)
     const urbanHit = rng() < model.occurrenceProbability(urban)
 
@@ -248,12 +254,13 @@ export function resolveEncounterPhase(
           rate: satoyama,
         })
       } else {
-        dissatisfaction += model.params.damage.satoyama
+        const dmg = model.params.damage.satoyama * dmgFactor
+        dissatisfaction += dmg
         events.push({
           districtId: def.id,
           kind: 'satoyama',
-          message: `${def.name}：里山でクマ出没（不満度+${model.params.damage.satoyama}）`,
-          dissatisfactionDelta: model.params.damage.satoyama,
+          message: `${def.name}：里山でクマ出没（不満度+${dmg}）`,
+          dissatisfactionDelta: dmg,
           rate: satoyama,
         })
       }
@@ -261,12 +268,13 @@ export function resolveEncounterPhase(
 
     // 市街出現
     if (urbanHit) {
-      dissatisfaction += model.params.damage.urban
+      const dmgU = model.params.damage.urban * dmgFactor
+      dissatisfaction += dmgU
       events.push({
         districtId: def.id,
         kind: 'urban',
-        message: `${def.name}：市街地でクマ出没（不満度+${model.params.damage.urban}）`,
-        dissatisfactionDelta: model.params.damage.urban,
+        message: `${def.name}：市街地でクマ出没（不満度+${dmgU}）`,
+        dissatisfactionDelta: dmgU,
         rate: urban,
       })
     }
@@ -291,6 +299,8 @@ export function resolveEncounterPhase(
       forestInfluxFactor: trapConsumed
         ? Math.max(model.params.actionEffects.trapForestFloor, ds.forestInfluxFactor * model.params.actionEffects.trapForestFactor)
         : ds.forestInfluxFactor,
+      // パトロール：毎ターン減って失効。
+      patrolTurns: Math.max(0, ds.patrolTurns - 1),
     }
   }
 
