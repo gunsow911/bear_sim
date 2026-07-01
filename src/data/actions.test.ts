@@ -25,4 +25,18 @@ describe('ACTIONS data', () => {
     expect(ACTIONS['box-trap'].instructionPointCost).toBe(2)
     expect(ACTIONS['emergency-shooting'].instructionPointCost).toBe(2)
   })
+
+  it('各施策が realWorldDesc / gameEffectDesc を持つ', () => {
+    for (const a of ACTION_LIST) {
+      expect(a.realWorldDesc.length).toBeGreaterThan(0)
+      expect(a.gameEffectDesc.length).toBeGreaterThan(0)
+    }
+  })
+
+  it('施策バーの並びは日常5→切り札2（コスト昇順のグルーピング）', () => {
+    expect(ACTION_LIST.map((a) => a.kind)).toEqual([
+      'mowing', 'electric-fence', 'attractant-removal', 'patrol', 'hazing',
+      'box-trap', 'emergency-shooting',
+    ])
+  })
 })

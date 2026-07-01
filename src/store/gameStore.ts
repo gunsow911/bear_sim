@@ -154,6 +154,13 @@ interface GameStore {
   openActionModal: () => void
   /** 確認モーダルを閉じる（「戻る」）。 */
   closeActionModal: () => void
+
+  /** ヘルプモーダルで説明中の施策。null = 非表示。 */
+  helpActionKind: ActionKind | null
+  /** 指定施策のヘルプモーダルを開く。 */
+  openActionHelp: (kind: ActionKind) => void
+  /** ヘルプモーダルを閉じる。 */
+  closeActionHelp: () => void
   /** 予約済みの施策をすべて適用し、遭遇フェーズを解決する。 */
   commitActions: () => void
 
@@ -195,6 +202,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   tentativeAgendaId: null,
   pendingActions: [],
   actionModalOpen: false,
+  helpActionKind: null,
   messages: [],
   messageIndex: 0,
 
@@ -258,6 +266,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
   openActionModal: () => set({ actionModalOpen: true }),
 
   closeActionModal: () => set({ actionModalOpen: false }),
+
+  openActionHelp: (kind) => set({ helpActionKind: kind }),
+
+  closeActionHelp: () => set({ helpActionKind: null }),
 
   commitActions: () =>
     set((state) => {
@@ -363,6 +375,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       tentativeAgendaId: null,
       pendingActions: [],
       actionModalOpen: false,
+      helpActionKind: null,
       messages: [],
       messageIndex: 0,
     }),
