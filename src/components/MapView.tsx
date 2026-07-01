@@ -6,7 +6,8 @@
  * 実データへの差し替えは docs/DATA.md を参照。
  */
 
-import { GeoJSON, MapContainer, Marker, TileLayer } from 'react-leaflet'
+import { useEffect } from 'react'
+import { GeoJSON, MapContainer, Marker, TileLayer, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import type { LatLngBoundsExpression, Layer, PathOptions } from 'leaflet'
 import type { Feature } from 'geojson'
@@ -15,8 +16,10 @@ import { districtsGeo } from '@/data/stages/yamaguchi/districtsGeo'
 import { useGameStore } from '@/store/gameStore'
 import { SightingHeatLayer } from './SightingHeatLayer'
 
+type BoundsTuple = [[number, number], [number, number]]
+
 /** 全地区を含む表示範囲を GeoJSON から算出する（[ [南西lat,lng], [北東lat,lng] ]）。 */
-function computeBounds(): LatLngBoundsExpression {
+function computeBounds(): BoundsTuple {
   let minLat = 90,
     minLng = 180,
     maxLat = -90,
@@ -41,7 +44,24 @@ function computeBounds(): LatLngBoundsExpression {
   ]
 }
 
-const CITY_BOUNDS = computeBounds()
+/**
+ * 表示範囲を中心へ向けて frac 倍に縮める。fitBounds は小さい範囲ほど高ズームになるため、
+ * frac=2/3 でステージ中央 2/3 を表示＝約1.5倍ズームイン（外縁は少し切れる／スクロールで追える）。
+ */
+function shrinkBounds([[minLat, minLng], [maxLat, maxLng]]: BoundsTuple, frac: number): BoundsTuple {
+  const cLat = (minLat + maxLat) / 2
+  const cLng = (minLng + maxLng) / 2
+  const hLat = ((maxLat - minLat) / 2) * frac
+  const hLng = ((maxLng - minLng) / 2) * frac
+  return [
+    [cLat - hLat, cLng - hLng],
+    [cLat + hLat, cLng + hLng],
+  ]
+}
+
+/** ステージ中央 2/3 を表示（引きすぎ回避）。数値を上げると引き、下げると寄る。 */
+const VIEW_FRACTION = 2 / 3
+const CITY_BOUNDS: LatLngBoundsExpression = shrinkBounds(computeBounds(), VIEW_FRACTION)
 
 /** CSS 変数（テーマ色）を rgb() 文字列として読む。Leaflet の塗りに使う。 */
 function cssVar(name: string): string {
@@ -55,6 +75,22 @@ function riskColor(rate: number): string {
   if (rate >= 50) return cssVar('--color-risk-danger')
   if (rate >= 25) return cssVar('--color-risk-warn')
   return cssVar('--color-risk-safe')
+}
+
+/**
+ * 地図コンテナのサイズ変化（左ペイン開閉・ウィンドウリサイズ等）を ResizeObserver で検知し、
+ * Leaflet に伝える。これを呼ばないとコンテナ幅が変わってもタイル／キャンバスがズレる。
+ * invalidateSize は幅変化ぶんだけ中央寄せ（panBy）するので、ヒート層も moveend 経由で追従する。
+ */
+function AutoInvalidateSize() {
+  const map = useMap()
+  useEffect(() => {
+    const container = map.getContainer()
+    const ro = new ResizeObserver(() => map.invalidateSize({ animate: false }))
+    ro.observe(container)
+    return () => ro.disconnect()
+  }, [map])
+  return null
 }
 
 export function MapView() {
@@ -133,7 +169,8 @@ export function MapView() {
   }
 
   return (
-    <MapContainer bounds={CITY_BOUNDS} className="h-full w-full" scrollWheelZoom>
+    <MapContainer bounds={CITY_BOUNDS} className="h-full w-full" scrollWheelZoom zoomSnap={0.25}>
+      <AutoInvalidateSize />
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"

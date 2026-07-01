@@ -502,16 +502,125 @@ function ActionBar() {
   )
 }
 
+/** 画面幅が md(768px) 以上か。左ペインの初期表示・選択時クローズの判定に使う。 */
+function isDesktop(): boolean {
+  return typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches
+}
+
+/**
+ * 左ペインの地区リスト。各地区の名前・山林隣接・里山/市街遭遇率を並べ、クリックで選択する。
+ * onSelect はモバイルで選択後にドロワーを閉じるために呼ぶ。
+ */
+function DistrictList({ onSelect }: { onSelect?: () => void }) {
+  const stage = useGameStore((s) => s.stage)
+  const game = useGameStore((s) => s.game)
+  const selectedId = useGameStore((s) => s.selectedDistrictId)
+  const selectDistrict = useGameStore((s) => s.selectDistrict)
+  if (!stage || !game) return null
+
+  return (
+    <ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-3">
+      {stage.districts.map((d) => {
+        const ds = game.districts[d.id]
+        const selected = d.id === selectedId
+        return (
+          <li key={d.id}>
+            <button
+              className={`w-full rounded-lg border px-3 py-2 text-left transition ${
+                selected
+                  ? 'border-risk-safe bg-panel-light'
+                  : 'border-panel-border bg-panel hover:bg-panel-light'
+              }`}
+              onClick={() => {
+                selectDistrict(d.id)
+                onSelect?.()
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-bold">{d.name}</span>
+                {d.mountainAdjacent && <span title="山林隣接">⛰️</span>}
+              </div>
+              <div className="mt-1 text-xs text-slate-400">
+                里山{' '}
+                <span className={riskColor(ds.satoyamaEncounterRate)}>
+                  {ds.satoyamaEncounterRate.toFixed(0)}
+                </span>
+                <span className="text-slate-500"> / </span>市街{' '}
+                <span className={riskColor(ds.urbanEncounterRate)}>
+                  {ds.urbanEncounterRate.toFixed(0)}
+                </span>
+              </div>
+            </button>
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
+/**
+ * 左ペイン（地区リスト）。折りたたみ可能。
+ * md 以上：静的な左カラム。md 未満：地図に重なるドロワー（バックドロップ付き）で既定は閉。
+ */
+function DistrictSidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const closeOnMobile = () => {
+    if (!isDesktop()) onClose()
+  }
+  return (
+    <>
+      {/* モバイルのバックドロップ（md 未満・open 時のみ） */}
+      {open && (
+        <div
+          className="absolute inset-0 z-[440] bg-black/40 md:hidden"
+          aria-hidden
+          onClick={onClose}
+        />
+      )}
+      <aside
+        className={`absolute inset-y-0 left-0 z-[450] flex w-64 max-w-[80%] flex-col border-r border-panel-border bg-panel transition-transform duration-200 md:relative md:z-auto md:max-w-none md:bg-transparent ${
+          open ? 'translate-x-0' : '-translate-x-full md:hidden'
+        }`}
+      >
+        <div className="flex items-center justify-between px-3 pt-3">
+          <h2 className="text-sm font-bold text-slate-400">地区</h2>
+          <button
+            aria-label="地区パネルを閉じる"
+            onClick={onClose}
+            className="rounded border border-panel-border bg-panel px-2 leading-6 text-slate-400 transition hover:bg-panel-light"
+          >
+            ‹
+          </button>
+        </div>
+        <DistrictList onSelect={closeOnMobile} />
+      </aside>
+    </>
+  )
+}
+
 function Dashboard() {
+  // 左ペインの開閉。スマホサイズ（md 未満）は既定で閉じる。
+  const [sidebarOpen, setSidebarOpen] = useState(isDesktop)
   return (
     <div className="flex h-full flex-col">
       <Hud />
-      <main className="relative min-h-0 flex-1">
-        <AgendaCards />
-        <EncounterReveal />
-        <ActionConfirmModal />
-        <MapView />
-      </main>
+      <div className="relative flex min-h-0 flex-1">
+        <DistrictSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <main className="relative min-h-0 min-w-0 flex-1">
+          <AgendaCards />
+          <EncounterReveal />
+          <ActionConfirmModal />
+          <MapView />
+          {/* 折りたたみ中の再表示タブ（地図の左端・垂直中央＝Leafletズーム操作と干渉しない） */}
+          {!sidebarOpen && (
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="absolute left-0 top-1/2 z-[500] -translate-y-1/2 rounded-r-lg border border-l-0 border-panel-border bg-panel/90 px-2 py-3 text-xs text-slate-300 shadow transition hover:bg-panel-light"
+            >
+              地区 ›
+            </button>
+          )}
+        </main>
+      </div>
       <DistrictDetail />
     </div>
   )

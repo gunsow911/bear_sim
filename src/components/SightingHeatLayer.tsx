@@ -33,10 +33,10 @@ export function SightingHeatLayer({ turn, maxTurns }: { turn: number; maxTurns: 
       (s) => [s.lat, s.lon, 1] as [number, number, number],
     )
     const layer = L.heatLayer(points, {
-      radius: 26,
-      blur: 14, // 小さいほど輪郭がくっきり
+      radius: 18, // 小さめにして点が団子に溶けないように（出現位置を掴みやすく）
+      blur: 8, // 小さいほど輪郭がくっきり。滲みを抑える
       max: 3, // 低いほど少ない重なりで飽和＝色が濃く出る
-      minOpacity: 0.45, // 下限不透明度を上げてくっきり見せる
+      minOpacity: 0.5, // 下限不透明度を上げてくっきり見せる
       gradient: { 0.2: '#3b82f6', 0.4: '#22d3ee', 0.6: '#facc15', 0.8: '#f97316', 1: '#ef4444' },
     })
     layer.addTo(map)
