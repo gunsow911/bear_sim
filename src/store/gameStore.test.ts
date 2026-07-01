@@ -132,3 +132,18 @@ describe('gameStore 節目メッセージ', () => {
     expect(s().messages).toEqual([])
   })
 })
+
+describe('gameStore 施策ヘルプモーダル', () => {
+  beforeEach(() => {
+    s().reset()
+    s().startStage(yamaguchiStage)
+  })
+
+  it('openActionHelp で helpActionKind がセットされ、closeActionHelp で null に戻る', () => {
+    expect(s().helpActionKind).toBe(null)
+    s().openActionHelp('box-trap')
+    expect(s().helpActionKind).toBe('box-trap')
+    s().closeActionHelp()
+    expect(s().helpActionKind).toBe(null)
+  })
+})
