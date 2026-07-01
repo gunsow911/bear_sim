@@ -13,11 +13,9 @@ export const ACTIONS: Record<ActionKind, ActionDef> = {
     instructionPointCost: 1,
     flavor:
       '集落と山林の境界を一斉に刈り払い、見通しを確保。やぶに隠れて里へ下りる"けものみち"を細くし、山林からも隣接地区からもこの地区への流入を鈍らせます。',
-    effectLabel: 'この地区への流入を約半分に抑える',
+    effectLabel: 'この地区への流入を抑える',
     realWorldDesc:
       '集落と山林の境界に茂った藪を刈り払い、見通しのよい緩衝帯をつくる生息環境管理の手法です。クマが身を隠して里へ下りる“けものみち”を断ち、人里に近づきにくくします。',
-    gameEffectDesc:
-      '対象の地区に数ターンのあいだ効き、山からの直接の流入と、隣の地区からの移動流入の両方を鈍らせます。危険が高まる前に打っておく“先行投資”型の対策です。',
   },
   'electric-fence': {
     kind: 'electric-fence',
@@ -25,11 +23,9 @@ export const ACTIONS: Record<ActionKind, ActionDef> = {
     instructionPointCost: 1,
     flavor:
       '農地のまわりに侵入防止柵を張りめぐらせます。里山から下りてくる出没を一度だけ確実に食い止めます。',
-    effectLabel: '数ターン以内の里山の出没を1回だけ防ぐ',
+    effectLabel: '数週間の里山の出没を1回だけ防ぐ',
     realWorldDesc:
       '農地や養蜂場のまわりに電気柵を張りめぐらせ、クマの侵入を物理的に防ぐ被害防止対策です。除去しきれない誘引物を守るのに使われます。',
-    gameEffectDesc:
-      '対象の地区の里山の出没を一度だけ確実に食い止める“盾”です。防いだ時点で失効します。決壊してからでは間に合わないので、危ないと見たら早めに張っておきます。',
   },
   'attractant-removal': {
     kind: 'attractant-removal',
@@ -41,8 +37,6 @@ export const ACTIONS: Record<ActionKind, ActionDef> = {
     realTerms: ['誘引物除去'],
     realWorldDesc:
       '放置された柿や栗、屋外の生ゴミなど、クマを人里へ引き寄せる誘引物を地域ぐるみで取り除く根本対策です。第5期計画でも重点に位置づけられています。',
-    gameEffectDesc:
-      '対象の地区で、里山・市街どちらの出没圧もしばらくのあいだ抑え続けます。すぐ劇的には効きませんが、じわじわと長く効くのが持ち味です。',
   },
   patrol: {
     kind: 'patrol',
@@ -54,8 +48,6 @@ export const ACTIONS: Record<ActionKind, ActionDef> = {
     realTerms: ['クマレンジャー'],
     realWorldDesc:
       'クマレンジャーや鳥獣専門指導員が地区を巡回し、早期発見・現場対応・住民への助言にあたります。山口県では最も多く行われている対策です。',
-    gameEffectDesc:
-      '巡回しているあいだ、その地区でクマが出没しても住民の不安（不満）の広がりを抑えます。出没そのものは防ぎませんが、被害の“痛み”を和らげるダメージコントロールです。',
   },
   hazing: {
     kind: 'hazing',
@@ -67,8 +59,6 @@ export const ACTIONS: Record<ActionKind, ActionDef> = {
     realTerms: ['追い払い'],
     realWorldDesc:
       '花火・犬・爆音機などでクマを山へ追い返す対策です。すぐ効きますが、同じ手を繰り返すとクマが慣れてしまい、だんだん通用しなくなります。',
-    gameEffectDesc:
-      '対象の地区の出没を今すぐ薄く抑えます。ただし同じ地区で繰り返すほど慣れて効きが落ち、しばらく使わないと再び効くようになります。根本対策と組み合わせて使います。',
   },
   'box-trap': {
     kind: 'box-trap',
@@ -80,8 +70,6 @@ export const ACTIONS: Record<ActionKind, ActionDef> = {
     realTerms: ['個体数管理'],
     realWorldDesc:
       '排除地域に箱わなを設置し、里に通う個体を捕獲する個体群管理の手法です。個体群を守るため、年間の捕獲上限のもとで慎重に運用されます。',
-    gameEffectDesc:
-      '仕掛けて待ち伏せ、かかれば人里に出る前に捕らえます。捕獲できると、以後その地区に降りてくる圧そのものが恒久的に和らぎます。人手がかかり、指示を2つ使います。',
   },
   'emergency-shooting': {
     kind: 'emergency-shooting',
@@ -93,8 +81,6 @@ export const ACTIONS: Record<ActionKind, ActionDef> = {
     realTerms: ['緊急銃猟'],
     realWorldDesc:
       '市街地などでクマが人に緊急の危険を及ぼす際、市町村の判断で銃による捕獲を実施できる制度です（2024年の鳥獣保護管理法改正で創設）。',
-    gameEffectDesc:
-      '市街地に出没が起きてはじめて発動できる“最後の防衛線”です。市街の危険を即座に断ち切りますが、発砲は住民を動揺させ不満が上がります。指示を2つ使います。',
   },
 }
 

@@ -26,10 +26,9 @@ describe('ACTIONS data', () => {
     expect(ACTIONS['emergency-shooting'].instructionPointCost).toBe(2)
   })
 
-  it('各施策が realWorldDesc / gameEffectDesc を持つ', () => {
+  it('各施策が realWorldDesc を持つ', () => {
     for (const a of ACTION_LIST) {
       expect(a.realWorldDesc.length).toBeGreaterThan(0)
-      expect(a.gameEffectDesc.length).toBeGreaterThan(0)
     }
   })
 
